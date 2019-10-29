@@ -7,8 +7,16 @@ import (
 	// #include <windows.h>
 	"C"
 )
-import "fmt"
+import (
+	"fmt"
+	"syscall"
+)
 
+var (
+	midiInListeners = make(map[int]func(data []byte, deltaMicroseconds int64))
+)
+
+// https://docs.microsoft.com/fr-fr/windows/win32/multimedia/midi-functions
 type midiDriver struct{}
 
 func (d midiDriver) Ins() ([]mid.In, error) {
@@ -20,7 +28,7 @@ func (d midiDriver) Ins() ([]mid.In, error) {
 		if err != C.MMSYSERR_NOERROR {
 			return nil, fmt.Errorf("mm: %d", err)
 		}
-		ins = append(ins, midiIn{i, C.GoString(&caps.szPname[0])})
+		ins = append(ins, &midiIn{deviceID: i, deviceName: C.GoString(&caps.szPname[0])})
 	}
 	return ins, nil
 }
@@ -34,7 +42,7 @@ func (d midiDriver) Outs() ([]mid.Out, error) {
 		if err != C.MMSYSERR_NOERROR {
 			return nil, fmt.Errorf("mm: %d", err)
 		}
-		outs = append(outs, midiOut{i, C.GoString(&caps.szPname[0])})
+		outs = append(outs, &midiOut{deviceID: i, deviceName: C.GoString(&caps.szPname[0])})
 	}
 	return outs, nil
 }
@@ -50,38 +58,72 @@ func (d midiDriver) Close() error {
 type midiIn struct {
 	deviceID   int
 	deviceName string
+	handle     C.HMIDIIN
 }
 
-func (d midiIn) Open() error {
+func (d *midiIn) Open() error {
+	err := C.midiInOpen(&d.handle, C.UINT(d.deviceID), C.DWORD_PTR(syscall.NewCallback(midiInProc)), C.DWORD_PTR(d.deviceID), C.CALLBACK_FUNCTION)
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
+	}
 	return nil
 }
 
-func (d midiIn) Close() error {
+func (d *midiIn) Close() error {
+	err := C.midiInClose(d.handle)
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
+	}
+	d.handle = nil
 	return nil
 }
 
-func (d midiIn) IsOpen() bool {
-	return false
+func (d *midiIn) IsOpen() bool {
+	return d.handle != nil
 }
 
-func (d midiIn) Number() int {
+func (d *midiIn) Number() int {
 	return d.deviceID
 }
 
-func (d midiIn) String() string {
+func (d *midiIn) String() string {
 	return d.deviceName
 }
 
-func (d midiIn) Underlying() interface{} {
+func (d *midiIn) Underlying() interface{} {
 	return nil
 }
 
-func (d midiIn) SetListener(func(data []byte, deltaMicroseconds int64)) error {
+func (d *midiIn) SetListener(ls func(data []byte, deltaMicroseconds int64)) error {
+	midiInListeners[d.deviceID] = ls
+	err := C.midiInStart(d.handle)
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
+	}
 	return nil
 }
 
-func (d midiIn) StopListening() error {
+func (d *midiIn) StopListening() error {
+	err := C.midiInStop(d.handle)
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
+	}
 	return nil
+}
+
+func midiInProc(hMidiIn C.HMIDIIN, wMsg C.UINT, dwInstance C.DWORD_PTR, dwParam1 C.DWORD_PTR, dwParam2 C.DWORD_PTR) uintptr {
+	if wMsg == C.MIM_DATA {
+		ls, ok := midiInListeners[int(dwInstance)]
+		if !ok {
+			return 0
+		}
+		b := make([]byte, 3)
+		b[0] = byte(dwParam1)
+		b[1] = byte(dwParam1 >> 8)
+		b[2] = byte(dwParam1 >> 16)
+		ls(b, int64(dwParam2)*1000)
+	}
+	return 0
 }
 
 type midiOut struct {
@@ -89,30 +131,30 @@ type midiOut struct {
 	deviceName string
 }
 
-func (d midiOut) Open() error {
+func (d *midiOut) Open() error {
 	return nil
 }
 
-func (d midiOut) Close() error {
+func (d *midiOut) Close() error {
 	return nil
 }
 
-func (d midiOut) IsOpen() bool {
+func (d *midiOut) IsOpen() bool {
 	return false
 }
 
-func (d midiOut) Number() int {
+func (d *midiOut) Number() int {
 	return d.deviceID
 }
 
-func (d midiOut) String() string {
+func (d *midiOut) String() string {
 	return d.deviceName
 }
 
-func (d midiOut) Underlying() interface{} {
+func (d *midiOut) Underlying() interface{} {
 	return nil
 }
 
-func (d midiOut) Send([]byte) error {
+func (d *midiOut) Send([]byte) error {
 	return nil
 }
