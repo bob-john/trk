@@ -113,15 +113,36 @@ func (d *midiIn) StopListening() error {
 }
 
 func midiInProc(hMidiIn C.HMIDIIN, wMsg C.UINT, dwInstance C.DWORD_PTR, dwParam1 C.DWORD_PTR, dwParam2 C.DWORD_PTR) uintptr {
-	if wMsg == C.MIM_DATA {
+	switch wMsg {
+	case C.MIM_OPEN:
+		// log.Println(dwInstance, "MIM_OPEN")
+
+	case C.MIM_CLOSE:
+		// log.Println(dwInstance, "MIM_CLOSE")
+
+	case C.MIM_DATA:
+		// log.Println(dwInstance, "MIM_DATA", dwParam1, dwParam2)
 		ls, ok := midiInListeners[int(dwInstance)]
 		if !ok {
 			return 0
 		}
-		b := make([]byte, 3)
-		b[0] = byte(dwParam1)
-		b[1] = byte(dwParam1 >> 8)
-		b[2] = byte(dwParam1 >> 16)
+		b := []byte{byte(dwParam1), byte(dwParam1 >> 8), byte(dwParam1 >> 16)}
+		switch b[0] & 0xF0 {
+		case 0xF0:
+			switch b[0] {
+			case 0xF1, 0xF3:
+				b = b[:2]
+			case 0xF2:
+				b = b[:3]
+			default:
+				b = b[:1]
+			}
+		case 0xC0, 0xD0:
+			b = b[:2]
+		}
+		if b[0] == 0xF8 {
+			return 0
+		}
 		ls(b, int64(dwParam2)*1000)
 	}
 	return 0

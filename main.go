@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fmt.Println("trk")
+	fmt.Println("TRK")
 
 	var d midiDriver
 
@@ -26,7 +26,7 @@ func main() {
 		fmt.Printf("[%v] %s\n", port.Number(), port.String())
 	}
 
-	in, err := mid.OpenIn(midiDriver{}, -1, "Keystation Mini 32")
+	in, err := mid.OpenIn(midiDriver{}, -1, "Elektron Digitone")
 	must(err)
 	defer in.Close()
 
