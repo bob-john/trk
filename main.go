@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/mid"
 )
 
@@ -27,8 +28,23 @@ func main() {
 
 	in, err := mid.OpenIn(midiDriver{}, -1, "Keystation Mini 32")
 	must(err)
-	err = mid.ConnectIn(in, mid.NewReader())
+	defer in.Close()
+
+	out, err := mid.OpenOut(midiDriver{}, -1, "Microsoft GS Wavetable Synth")
 	must(err)
+	defer out.Close()
+
+	var (
+		w = mid.ConnectOut(out)
+		r = mid.NewReader()
+	)
+
+	r.Msg.Each = func(pos *mid.Position, msg midi.Message) {
+		w.Write(msg)
+	}
+
+	mid.ConnectIn(in, r)
+
 	time.Sleep(1 * time.Hour)
 }
 

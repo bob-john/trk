@@ -9,6 +9,7 @@ import (
 )
 import (
 	"fmt"
+	"log"
 	"syscall"
 )
 
@@ -129,18 +130,28 @@ func midiInProc(hMidiIn C.HMIDIIN, wMsg C.UINT, dwInstance C.DWORD_PTR, dwParam1
 type midiOut struct {
 	deviceID   int
 	deviceName string
+	handle     C.HMIDIOUT
 }
 
 func (d *midiOut) Open() error {
+	err := C.midiOutOpen(&d.handle, C.UINT(d.deviceID), C.DWORD_PTR(0), C.DWORD_PTR(0), C.CALLBACK_NULL)
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
+	}
 	return nil
 }
 
 func (d *midiOut) Close() error {
+	err := C.midiOutClose(d.handle)
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
+	}
+	d.handle = nil
 	return nil
 }
 
 func (d *midiOut) IsOpen() bool {
-	return false
+	return d.handle != nil
 }
 
 func (d *midiOut) Number() int {
@@ -155,6 +166,14 @@ func (d *midiOut) Underlying() interface{} {
 	return nil
 }
 
-func (d *midiOut) Send([]byte) error {
+func (d *midiOut) Send(b []byte) error {
+	if len(b) == 3 {
+		err := C.midiOutShortMsg(d.handle, C.DWORD(int32(b[0])|(int32(b[1])<<8)|(int32(b[2])<<16)))
+		if err != C.MMSYSERR_NOERROR {
+			return fmt.Errorf("mm: %d", err)
+		}
+	} else {
+		log.Printf("cannot send %v, len=%d", b, len(b))
+	}
 	return nil
 }
