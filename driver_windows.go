@@ -9,7 +9,6 @@ import (
 )
 import (
 	"fmt"
-	"log"
 	"syscall"
 )
 
@@ -184,14 +183,17 @@ func (d *midiOut) Underlying() interface{} {
 	return nil
 }
 
-func (d *midiOut) Send(b []byte) error {
-	if len(b) == 3 {
-		err := C.midiOutShortMsg(d.handle, C.DWORD(int32(b[0])|(int32(b[1])<<8)|(int32(b[2])<<16)))
-		if err != C.MMSYSERR_NOERROR {
-			return fmt.Errorf("mm: %d", err)
-		}
-	} else {
-		log.Printf("cannot send %v, len=%d", b, len(b))
+func (d *midiOut) Send(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	var msg int32
+	for n, b := range data {
+		msg = msg | (int32(b) << (8 * n))
+	}
+	err := C.midiOutShortMsg(d.handle, C.DWORD(msg))
+	if err != C.MMSYSERR_NOERROR {
+		return fmt.Errorf("mm: %d", err)
 	}
 	return nil
 }
