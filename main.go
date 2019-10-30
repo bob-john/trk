@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"io"
+	"log"
 
-	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/mid"
+	"gitlab.com/gomidi/midi/midimessage/realtime"
+	"gitlab.com/gomidi/midi/midireader"
 )
 
 func main() {
@@ -30,7 +32,33 @@ func main() {
 	must(err)
 	defer in.Close()
 
-	out, err := mid.OpenOut(midiDriver{}, -1, "Microsoft GS Wavetable Synth")
+	r, w := io.Pipe()
+
+	dataC := make(chan []byte)
+	go func() {
+		for data := range dataC {
+			w.Write(data)
+		}
+	}()
+
+	err = in.SetListener(func(data []byte, deltaMicroseconds int64) {
+		dataC <- data
+	})
+
+	rd := midireader.New(r, func(m realtime.Message) {
+		if m != realtime.TimingClock {
+			fmt.Println(m)
+		}
+	})
+	for {
+		m, err := rd.Read()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(m)
+	}
+
+	/*out, err := mid.OpenOut(midiDriver{}, -1, "Microsoft GS Wavetable Synth")
 	must(err)
 	defer out.Close()
 
@@ -45,7 +73,7 @@ func main() {
 
 	mid.ConnectIn(in, r)
 
-	time.Sleep(1 * time.Hour)
+	time.Sleep(1 * time.Hour)*/
 }
 
 func must(err error) {

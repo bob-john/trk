@@ -140,9 +140,6 @@ func midiInProc(hMidiIn C.HMIDIIN, wMsg C.UINT, dwInstance C.DWORD_PTR, dwParam1
 		case 0xC0, 0xD0:
 			b = b[:2]
 		}
-		if b[0] == 0xF8 {
-			return 0
-		}
 		ls(b, int64(dwParam2)*1000)
 	}
 	return 0
