@@ -13,6 +13,8 @@ import (
 	"gitlab.com/gomidi/midi/mid"
 )
 
+var wr2 *mid.Writer
+
 func main() {
 	fmt.Println("TRK")
 
@@ -95,6 +97,14 @@ func main() {
 					&Pad{"Sus4", 6, 2, 42, 40, false},
 				},
 			},
+			&Bar{
+				Name: "Transforms",
+				Pads: []*Pad{
+					&Pad{"P", 5, 1, 10, 8, false},
+					&Pad{"R", 5, 2, 10, 8, false},
+					&Pad{"L", 5, 3, 10, 8, false},
+				},
+			},
 		},
 	}
 
@@ -118,10 +128,15 @@ func main() {
 	out, err := mid.OpenOut(midiDriver{}, -1, "MIDIOUT2 (LPMiniMK3 MIDI)")
 	must(err)
 	defer out.Close()
-
 	wr := mid.ConnectOut(out)
+
 	clear(wr)
 	scene.Draw(wr)
+
+	out2, err := mid.OpenOut(midiDriver{}, -1, "Microsoft GS Wavetable Synth")
+	must(err)
+	defer out2.Close()
+	wr2 = mid.ConnectOut(out2)
 
 	//in, err := mid.OpenIn(midiDriver{}, -1, "Elektron Digitone")
 	in, err := mid.OpenIn(midiDriver{}, -1, "MIDIIN2 (LPMiniMK3 MIDI)")
@@ -154,12 +169,6 @@ func main() {
 		fmt.Println(m)
 		scene.OnMessage(m)
 		scene.Draw(wr)
-
-		switch m.(type) {
-		case channel.NoteOn:
-
-		case channel.NoteOff:
-		}
 	}
 
 	/*var (
@@ -305,16 +314,15 @@ func (g Group) OnMessage(m midi.Message) {
 		case "Sus4":
 			chord.Intervals = []uint8{5, 7}
 		}
-	}
-}
+		if g.Name == "Keys" {
+			chord.Write(wr2, 120)
+		}
 
-func (g Group) SelectedPad() *Pad {
-	for _, p := range g.Pads {
-		if p.IsOn {
-			return p
+	case channel.NoteOff:
+		if g.Name == "Keys" {
+			chord.Write(wr2, 0)
 		}
 	}
-	return nil
 }
 
 type Scene struct {
@@ -356,4 +364,57 @@ type Chord struct {
 	Intervals []uint8
 }
 
-var chord = new(Chord)
+func (c Chord) Write(w *mid.Writer, velocity uint8) {
+	w.Write(channel.Channel0.NoteOn(c.Root, velocity))
+	for _, i := range c.Intervals {
+		w.Write(channel.Channel0.NoteOn(c.Root+i, velocity))
+	}
+}
+
+var chord = &Chord{60, []uint8{4, 7}}
+
+type Bar struct {
+	Name string
+	Pads []*Pad
+}
+
+func (b Bar) Draw(w *mid.Writer) {
+	for _, p := range b.Pads {
+		p.Draw(w)
+	}
+}
+
+func (b Bar) OnMessage(m midi.Message) {
+	switch m := m.(type) {
+	case channel.NoteOn:
+		var target *Pad
+		for _, p := range b.Pads {
+			if p.Key() == m.Key() {
+				target = p
+				break
+			}
+		}
+		if target == nil {
+			return
+		}
+		for _, p := range b.Pads {
+			p.IsOn = p == target
+		}
+		switch target.Name {
+		case "P":
+			switch chord.Intervals[0] {
+			case 4:
+				chord.Intervals[0] = 3
+			case 3:
+				chord.Intervals[0] = 4
+			}
+		case "R":
+		case "L":
+		}
+
+	case channel.NoteOff:
+		for _, p := range b.Pads {
+			p.IsOn = false
+		}
+	}
+}
