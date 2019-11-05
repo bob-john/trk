@@ -39,9 +39,9 @@ func main() {
 		case realtime.TimingClock:
 			if playing {
 				tick++
-				if tick%(24/4) == 0 {
+				if newBeat := (tick * 4) / 24; newBeat != beat {
 					lp.Set(1+uint8(beat%8), 8-uint8(beat%64)/8, 0)
-					beat++
+					beat = newBeat
 					lp.Set(1+uint8(beat%8), 8-uint8(beat%64)/8, 3)
 					fmt.Println(beat)
 					lp.Update()
