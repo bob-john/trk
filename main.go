@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/gdamore/tcell"
 	"github.com/gomidi/midi"
@@ -20,21 +19,120 @@ func main() {
 
 	lp, err := ConnectLaunchpad()
 	must(err)
-	defer lp.Close()
 
 	lp.Clear()
 
-	lp.Set(1, 8, 3)
+	cur := NewCursor(lp, 3)
+
 	lp.Update()
 
-	var playing bool = true
-	var tick int64
-	var beat int64
+	var (
+		playing   bool
+		recording bool
+		tick      int64
+		beat      int64
+	)
 
-	c := make(chan interface{})
+	// seq := make(map[int64][]midi.Message)
+
+	fmt.Println("Connect Digitakt")
+
+	quit := make(chan struct{})
+
+	digitakt, err := ConnectDevice("Elektron Digitakt", "Elektron Digitakt")
+	must(err)
+	go func() {
+		for m := range digitakt.In() {
+			if m != realtime.TimingClock {
+				fmt.Println(m)
+			}
+			switch m {
+			case realtime.TimingClock:
+				if playing {
+					tick++
+					if newBeat := (tick * 4) / 24; newBeat != beat {
+						beat = newBeat
+						cur.MoveTo(8-uint8(beat%64)/8, 1+uint8(beat%8))
+						lp.Update()
+					}
+				}
+
+			case realtime.Start:
+				tick = 0
+				beat = 0
+				playing = true
+
+			case realtime.Continue:
+				playing = true
+
+			case realtime.Stop:
+				playing = false
+			}
+			// if m, ok := m.(midi.Message); ok && recording {
+			// 	switch m := m.(type) {
+			// 	case channel.ProgramChange, channel.ControlChange:
+			// 		seq[beat] = append(seq[beat], m)
+			// 		fmt.Println("seq", beat, seq[beat])
+			// 		//TODO Deduplicate message by status (ie. type+channel)
+			// 	}
+			// }
+		}
+		fmt.Println("Bye Digitakt!")
+	}()
+
+	go func() {
+		for m := range lp.In() {
+			fmt.Println(m)
+			switch m := m.(type) {
+			case channel.ControlChange:
+				if m.Value() == 0 {
+					continue
+				}
+				switch m.Controller() {
+				case 19:
+					recording = !recording
+					if recording {
+						lp.Set(1, 9, 5)
+					} else {
+						lp.Set(1, 9, 0)
+					}
+					lp.Update()
+
+				case 89:
+					close(quit)
+				}
+
+			case channel.NoteOn:
+				row, col := m.Key()/10, m.Key()%10
+				fmt.Println(row, col)
+				if cur.IsAt(row, col) {
+					cur.ToggleFlashing()
+				} else {
+					cur.MoveTo(row, col)
+				}
+				lp.Update()
+				// step := 8*(8-m.Key()/10) + (m.Key()-1)%10
+				// fmt.Println(m.Key(), "->", step)
+				//(beat / 64) * 64
+			}
+		}
+		fmt.Println("Bye Launchpad!")
+	}()
+
+	<-quit
+
+	lp.Clear()
+
+	lp.Close()
+	digitakt.Close()
+
+	/*c := make(chan interface{})
 	err = ListenMidiInput("Elektron Digitone", c)
 	must(err)
 	for m := range c {
+		if m != realtime.TimingClock {
+			fmt.Println(m)
+		}
 		switch m {
 		case realtime.TimingClock:
 			if playing {
@@ -59,10 +157,15 @@ func main() {
 		case realtime.Stop:
 			playing = false
 		}
-		if m != realtime.TimingClock {
-			fmt.Println(m)
+		if m, ok := m.(midi.Message); ok && recording {
+			switch m := m.(type) {
+			case channel.ProgramChange, channel.ControlChange:
+				seq[beat] = append(seq[beat], m)
+				fmt.Println("seq", beat, seq[beat])
+				//TODO Deduplicate message by status (ie. type+channel)
+			}
 		}
-	}
+	}*/
 
 	// /*screen, err := tcell.NewScreen()
 	// must(err)
@@ -466,49 +569,59 @@ func (b Bar) OnMessage(m midi.Message) {
 }
 
 type Launchpad struct {
-	output mid.Out
-	writer *mid.Writer
-	color  map[uint8]uint8
-	dirty  map[uint8]bool
+	*Device
+	color map[uint8]uint8
+	dirty map[uint8]bool
 }
 
 func ConnectLaunchpad() (*Launchpad, error) {
-	output, err := mid.OpenOut(midiDriver{}, -1, "MIDIOUT2 (LPMiniMK3 MIDI)")
+	d, err := ConnectDevice("MIDIIN2 (LPMiniMK3 MIDI)", "MIDIOUT2 (LPMiniMK3 MIDI)")
 	if err != nil {
 		return nil, err
 	}
-	writer := mid.ConnectOut(output)
-	return &Launchpad{output, writer, make(map[uint8]uint8), make(map[uint8]bool)}, nil
-}
-
-func (lp *Launchpad) Close() {
-	lp.output.Close()
+	return &Launchpad{d, make(map[uint8]uint8), make(map[uint8]bool)}, nil
 }
 
 func (lp *Launchpad) Clear() {
 	for i := uint8(1); i < 10; i++ {
 		for j := uint8(1); j < 10; j++ {
-			lp.writer.Write(channel.Channel0.NoteOn(i*10+j, 0))
+			lp.Write(channel.Channel0.NoteOn(i*10+j, 0))
 		}
 	}
 	lp.color = make(map[uint8]uint8)
 	lp.dirty = make(map[uint8]bool)
 }
 
-func (lp *Launchpad) Set(x, y, color uint8) {
-	loc := y*10 + x
+func (lp *Launchpad) Set(row, col, color uint8) {
+	loc := row*10 + col
 	lp.dirty[loc] = lp.dirty[loc] || (lp.color[loc] != color)
 	lp.color[loc] = color
 }
 
+func (lp *Launchpad) Get(row, col uint8) uint8 {
+	loc := row*10 + col
+	return lp.color[loc]
+}
+
+func (lp *Launchpad) StartFlashing(row, col, color uint8) {
+	loc := row*10 + col
+	lp.Write(channel.Channel1.NoteOn(loc, color))
+}
+
+func (lp *Launchpad) StopFlashing(row, col uint8) {
+	loc := row*10 + col
+	lp.Write(channel.Channel0.NoteOn(loc, lp.color[loc]))
+	delete(lp.dirty, loc)
+}
+
 func (lp *Launchpad) Update() {
-	start := time.Now()
-	defer func() {
-		fmt.Println("Update", time.Since(start))
-	}()
+	// start := time.Now()
+	// defer func() {
+	// 	fmt.Println("Update", time.Since(start))
+	// }()
 	for loc, dirty := range lp.dirty {
 		if dirty {
-			lp.writer.Write(channel.Channel0.NoteOn(loc, lp.color[loc]))
+			lp.Write(channel.Channel0.NoteOn(loc, lp.color[loc]))
 		}
 		delete(lp.dirty, loc)
 	}
@@ -551,4 +664,118 @@ func ListenMidiInput(name string, messagec chan<- interface{}) error {
 	}()
 
 	return nil
+}
+
+type Device struct {
+	in  mid.In
+	inC chan midi.Message
+	out mid.Out
+	w   *mid.Writer
+}
+
+func ConnectDevice(inputName, outputName string) (*Device, error) {
+	in, err := mid.OpenIn(midiDriver{}, -1, inputName)
+	if err != nil {
+		return nil, err
+	}
+	inC := make(chan midi.Message)
+	r, w := io.Pipe()
+	datac := make(chan []byte)
+	go func() {
+		for data := range datac {
+			w.Write(data)
+		}
+	}()
+	err = in.SetListener(func(data []byte, deltaMicroseconds int64) {
+		datac <- data
+	})
+	if err != nil {
+		in.Close()
+		return nil, err
+	}
+	go func() {
+		rd := midireader.New(r, func(m realtime.Message) {
+			inC <- m
+		})
+		for {
+			m, err := rd.Read()
+			if err != nil {
+				return
+			}
+			inC <- m
+		}
+	}()
+
+	out, err := mid.OpenOut(midiDriver{}, -1, outputName)
+	if err != nil {
+		return nil, err
+	}
+	wr := mid.ConnectOut(out)
+
+	return &Device{in, inC, out, wr}, nil
+}
+
+func (d *Device) Close() {
+	d.in.Close()
+	close(d.inC)
+	d.out.Close()
+}
+
+func (d *Device) In() <-chan midi.Message {
+	return d.inC
+}
+
+func (d *Device) Write(m midi.Message) error {
+	return d.w.Write(m)
+}
+
+type Cursor struct {
+	lp       *Launchpad
+	color    uint8
+	row, col uint8
+	flashing bool
+}
+
+func NewCursor(lp *Launchpad, color uint8) *Cursor {
+	lp.Set(0, 0, color)
+	return &Cursor{lp, color, 0, 0, false}
+}
+
+func (c *Cursor) MoveTo(row, col uint8) {
+	c.lp.Set(c.row, c.col, 0)
+	c.row = row
+	c.col = col
+	if c.flashing {
+		c.lp.Set(c.row, c.col, c.color)
+		c.lp.Update()
+		c.lp.StartFlashing(c.row, c.col, 0)
+	} else {
+		c.lp.Set(c.row, c.col, c.color)
+	}
+}
+
+func (c *Cursor) IsAt(row, col uint8) bool {
+	return c.row == row && c.col == col
+}
+
+func (c *Cursor) ToggleFlashing() {
+	if c.flashing {
+		c.StopFlashing()
+	} else {
+		c.StartFlashing()
+	}
+}
+
+func (c *Cursor) IsFlashing() bool {
+	return c.flashing
+}
+
+func (c *Cursor) StartFlashing() {
+	c.flashing = true
+	c.lp.StartFlashing(c.row, c.col, 0)
+}
+
+func (c *Cursor) StopFlashing() {
+	c.lp.StopFlashing(c.row, c.col)
+	c.flashing = false
 }
