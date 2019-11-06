@@ -30,7 +30,6 @@ func main() {
 		playing   bool
 		recording bool
 		tick      int64
-		beat      int64
 	)
 
 	// seq := make(map[int64][]midi.Message)
@@ -50,16 +49,13 @@ func main() {
 			case realtime.TimingClock:
 				if playing {
 					tick++
-					if newBeat := (tick * 4) / 24; newBeat != beat {
-						beat = newBeat
-						cur.MoveTo(8-uint8(beat%64)/8, 1+uint8(beat%8))
-						lp.Update()
-					}
+					step := (tick / 6) % 64
+					cur.MoveTo(8-uint8(step/8), 1+uint8(step%8))
+					lp.Update()
 				}
 
 			case realtime.Start:
 				tick = 0
-				beat = 0
 				playing = true
 
 			case realtime.Continue:
@@ -104,16 +100,12 @@ func main() {
 
 			case channel.NoteOn:
 				row, col := m.Key()/10, m.Key()%10
-				fmt.Println(row, col)
 				if cur.IsAt(row, col) {
 					cur.ToggleFlashing()
 				} else {
 					cur.MoveTo(row, col)
 				}
 				lp.Update()
-				// step := 8*(8-m.Key()/10) + (m.Key()-1)%10
-				// fmt.Println(m.Key(), "->", step)
-				//(beat / 64) * 64
 			}
 		}
 		fmt.Println("Bye Launchpad!")
