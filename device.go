@@ -72,8 +72,12 @@ func OpenInput(name string) (*Input, error) {
 }
 
 func (i *Input) Close() error {
+	err := i.in.Close()
+	if err != nil {
+		return err
+	}
 	close(i.inC)
-	return i.in.Close()
+	return nil
 }
 
 func (i *Input) In() <-chan midi.Message {
