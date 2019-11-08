@@ -82,9 +82,9 @@ func render(page int) {
 				var str string
 				if ch || step%16 == 0 {
 					if m {
-						str = "\u25c7"
+						str = "."
 					} else {
-						str = "\u25c6"
+						str = "#"
 					}
 				} else {
 					str = "-"
