@@ -85,7 +85,7 @@ func render() {
 		step = 1 + (model.Cursor() % 16)
 	)
 
-	write(0, 0, fmt.Sprintf("%03d %s %02d", page, bar, step))
+	write(0, 0, fmt.Sprintf("SEQ %03d PAGE %s TRIG %02d", page, bar, step))
 	termbox.Flush()
 
 	view.Render(lp, model)
