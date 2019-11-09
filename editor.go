@@ -6,31 +6,28 @@ import (
 )
 
 type LineEditor struct {
-	str string
+	str, prev string
 }
 
-func (e *LineEditor) Reset(str string) {
+func (e *LineEditor) Reset(str, prev string) {
 	e.str = str
+	e.prev = prev
 }
 
 func (e *LineEditor) CellCount() int {
-	return 16
+	return 14
 }
 
 func (e *LineEditor) Cell(i int) Cell {
 	switch i {
 	case 0:
-		return BankCell{e, 4}
-	case 1:
-		return PatternCell{e, 5}
-	case 2, 3, 4, 5, 6, 7, 8, 9:
-		return MuteCell{e, 8 + i - 2}
-	case 10:
-		return BankCell{e, 17}
-	case 11:
-		return PatternCell{e, 18}
-	case 12, 13, 14, 15:
-		return MuteCell{e, 21 + i - 12}
+		return PatternCell{e, 4, Range{4, 3}.Substr(e.prev)}
+	case 1, 2, 3, 4, 5, 6, 7, 8:
+		return MuteCell{e, 8 + i - 1}
+	case 9:
+		return PatternCell{e, 17, Range{17, 3}.Substr(e.prev)}
+	case 10, 11, 12, 13:
+		return MuteCell{e, 21 + i - 10}
 	}
 	return nil
 }
@@ -56,46 +53,13 @@ type Cell interface {
 	String() string
 	Inc()
 	Dec()
-}
-
-type BankCell struct {
-	editor *LineEditor
-	index  int
-}
-
-func (c BankCell) Index() int {
-	return c.index
-}
-
-func (c BankCell) String() string {
-	return c.editor.Line()[c.index : c.index+1]
-}
-
-func (c BankCell) Inc() {
-	str := c.String()
-	next := str
-	switch str {
-	case ".":
-		next = "A"
-	case "A", "B", "C", "D", "E", "F", "G":
-		next = string(str[0] + 1)
-	}
-	c.editor.Replace(c.Index(), next)
-}
-
-func (c BankCell) Dec() {
-	str := c.String()
-	next := str
-	switch str {
-	case "B", "C", "D", "E", "F", "G", "H":
-		next = string(str[0] - 1)
-	}
-	c.editor.Replace(c.Index(), next)
+	Clear()
 }
 
 type PatternCell struct {
 	editor *LineEditor
 	index  int
+	old    string
 }
 
 func (c PatternCell) Index() int {
@@ -103,39 +67,37 @@ func (c PatternCell) Index() int {
 }
 
 func (c PatternCell) String() string {
-	return c.editor.Line()[c.index : c.index+2]
+	return c.editor.Line()[c.index : c.index+3]
 }
 
 func (c PatternCell) Inc() {
-	var next string
 	str := c.String()
 	switch str {
-	case ".":
-		next = "01"
+	case "...":
+		c.editor.Replace(c.index, c.old)
 	default:
-		val, _ := strconv.Atoi(str)
-		if val < 16 {
-			val++
+		p := DecodePattern(str)
+		if p < 127 {
+			c.editor.Replace(c.index, EncodePattern(p+1))
 		}
-		next = fmt.Sprintf("%02d", val)
 	}
-	c.editor.Replace(c.Index(), next)
 }
 
 func (c PatternCell) Dec() {
-	var next string
 	str := c.String()
 	switch str {
-	case ".":
-		return
+	case "...":
+		c.editor.Replace(c.index, c.old)
 	default:
-		val, _ := strconv.Atoi(str)
-		if val > 1 {
-			val--
+		p := DecodePattern(str)
+		if p > 0 {
+			c.editor.Replace(c.index, EncodePattern(p-1))
 		}
-		next = fmt.Sprintf("%02d", val)
 	}
-	c.editor.Replace(c.Index(), next)
+}
+
+func (c PatternCell) Clear() {
+	c.editor.Replace(c.index, "...")
 }
 
 type MuteCell struct {
@@ -171,4 +133,16 @@ func (c MuteCell) Dec() {
 		return
 	}
 	c.editor.Replace(c.Index(), next)
+}
+
+func (c MuteCell) Clear() {}
+
+func DecodePattern(str string) int {
+	bank := int(str[0] - 'A')
+	trig, _ := strconv.Atoi(str[1:])
+	return bank*16 + trig - 1
+}
+
+func EncodePattern(val int) string {
+	return fmt.Sprintf("%s%02d", string('A'+val/16), 1+val%16)
 }

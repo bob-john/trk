@@ -57,6 +57,11 @@ func main() {
 					currentStep++
 				}
 
+			case termbox.KeyDelete, termbox.KeyBackspace:
+				if editing {
+					editor.Cell(currentCell).Clear()
+				}
+
 			case termbox.KeyArrowLeft:
 				if currentCell > 0 {
 					currentCell--
@@ -71,7 +76,7 @@ func main() {
 				editing = !editing
 				currentCell = 0
 				if editing {
-					editor.Reset(line(currentStep))
+					editor.Reset(line(currentStep), "*** A01 ++++++++ A01 ++++")
 				}
 			}
 		}
