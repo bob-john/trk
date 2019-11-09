@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type LineEditor struct {
@@ -23,11 +24,11 @@ func (e *LineEditor) Cell(i int) Cell {
 	case 0:
 		return PatternCell{e, 4, Range{4, 3}.Substr(e.prev)}
 	case 1, 2, 3, 4, 5, 6, 7, 8:
-		return MuteCell{e, 8 + i - 1}
+		return MuteCell{e, 8, 8 + i - 1, Range{8, 8}.Substr(e.prev)}
 	case 9:
 		return PatternCell{e, 17, Range{17, 3}.Substr(e.prev)}
 	case 10, 11, 12, 13:
-		return MuteCell{e, 21 + i - 10}
+		return MuteCell{e, 21, 21 + i - 10, Range{21, 4}.Substr(e.prev)}
 	}
 	return nil
 }
@@ -101,8 +102,10 @@ func (c PatternCell) Clear() {
 }
 
 type MuteCell struct {
-	editor *LineEditor
-	index  int
+	editor     *LineEditor
+	groupIndex int
+	index      int
+	oldGroup   string
 }
 
 func (c MuteCell) Index() int {
@@ -114,28 +117,27 @@ func (c MuteCell) String() string {
 }
 
 func (c MuteCell) Inc() {
-	var next string
 	switch c.String() {
-	case ".", "-":
-		next = "+"
+	case ".":
+		c.editor.Replace(c.groupIndex, c.oldGroup)
 	default:
-		return
+		c.editor.Replace(c.Index(), "+")
 	}
-	c.editor.Replace(c.Index(), next)
 }
 
 func (c MuteCell) Dec() {
-	var next string
 	switch c.String() {
-	case ".", "+":
-		next = "-"
+	case ".":
+		c.editor.Replace(c.groupIndex, c.oldGroup)
 	default:
-		return
+		c.editor.Replace(c.Index(), "-")
 	}
-	c.editor.Replace(c.Index(), next)
+
 }
 
-func (c MuteCell) Clear() {}
+func (c MuteCell) Clear() {
+	c.editor.Replace(c.groupIndex, strings.Repeat(".", len(c.oldGroup)))
+}
 
 func DecodePattern(str string) int {
 	bank := int(str[0] - 'A')
