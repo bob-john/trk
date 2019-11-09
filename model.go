@@ -6,15 +6,13 @@ const (
 )
 
 type Model struct {
-	step   int
-	tracks []*Track
+	step     int
+	Digitakt *Synth
+	Digitone *Synth
 }
 
 func NewModel() *Model {
-	m := new(Model)
-	m.tracks = append(m.tracks, NewTrack(8))
-	m.tracks = append(m.tracks, NewTrack(4))
-	return m
+	return &Model{0, NewSynth(8), NewSynth(4)}
 }
 
 func (m *Model) Step() int {
@@ -31,6 +29,10 @@ func (m *Model) Page() int {
 
 func (m *Model) Cursor() int {
 	return m.step % pageSize
+}
+
+func (m *Model) StepForCursor(cursor int) int {
+	return m.Page()*m.PageSize() + cursor%m.PageSize()
 }
 
 func (m *Model) CanDecPage() bool {
@@ -53,10 +55,18 @@ func (m *Model) IncPage() {
 	}
 }
 
-func (m *Model) Tracks() []*Track {
-	return m.tracks
-}
-
 func (m *Model) SetCursor(val int) {
 	m.step = m.Page()*m.PageSize() + val%m.PageSize()
+}
+
+func (m *Model) HasMessage(step int) bool {
+	_, ch := m.Digitakt.Pattern(step)
+	if ch {
+		return true
+	}
+	_, ch = m.Digitone.Pattern(step)
+	if ch {
+		return true
+	}
+	return false
 }

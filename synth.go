@@ -2,25 +2,25 @@ package main
 
 import "fmt"
 
-type Track struct {
-	pattern    map[int]int
+type Synth struct {
+	pattern    map[int]Pattern
 	muted      map[mutedKey]bool
 	voiceCount int
 }
 
-func NewTrack(voiceCount int) *Track {
-	return &Track{make(map[int]int), make(map[mutedKey]bool), voiceCount}
+func NewSynth(voiceCount int) *Synth {
+	return &Synth{make(map[int]Pattern), make(map[mutedKey]bool), voiceCount}
 }
 
-func (t *Track) VoiceCount() int {
+func (t *Synth) VoiceCount() int {
 	return t.voiceCount
 }
 
-func (t *Track) SetPattern(step int, pattern int) {
+func (t *Synth) SetPattern(step int, pattern Pattern) {
 	t.pattern[step] = pattern
 }
 
-func (t *Track) Pattern(step int) (pattern int, change bool) {
+func (t *Synth) Pattern(step int) (pattern Pattern, change bool) {
 	pattern, change = t.pattern[step]
 	if change {
 		return
@@ -38,11 +38,11 @@ func (t *Track) Pattern(step int) (pattern int, change bool) {
 	return
 }
 
-func (t *Track) SetMuted(step int, voice int, muted bool) {
+func (t *Synth) SetMuted(step int, voice int, muted bool) {
 	t.muted[mutedKey{step, voice}] = muted
 }
 
-func (t *Track) Muted(step, voice int) (muted bool, change bool) {
+func (t *Synth) Muted(step, voice int) (muted bool, change bool) {
 	muted, change = t.muted[mutedKey{step, voice}]
 	if change {
 		return
@@ -66,6 +66,26 @@ type mutedKey struct {
 
 type Pattern int
 
+func MakePattern(bank, trig int) Pattern {
+	return Pattern(bank*16 + trig)
+}
+
 func (p Pattern) String() string {
 	return fmt.Sprintf("%s%02d", string('A'+int(p)/16), 1+int(p)%16)
+}
+
+func (p Pattern) Bank() int {
+	return int(p) / 16
+}
+
+func (p Pattern) Trig() int {
+	return int(p) % 16
+}
+
+func (p Pattern) SetBank(bank int) Pattern {
+	return MakePattern(bank, p.Trig())
+}
+
+func (p Pattern) SetTrig(trig int) Pattern {
+	return MakePattern(p.Bank(), trig)
 }

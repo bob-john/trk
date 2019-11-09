@@ -1,17 +1,16 @@
 package main
 
-var cursorFlashingColor uint8 = 0
-
 type Cursor struct {
-	row, col       uint8
-	color          uint8
+	row, col       int
+	color          int
+	flashingColor  int
 	flashing       bool
-	oldRow, oldCol uint8
+	oldRow, oldCol int
 	moved          bool
 }
 
-func NewCursor(color uint8) *Cursor {
-	return &Cursor{0, 0, color, false, 0, 0, false}
+func NewCursor(color, flashingColor int) *Cursor {
+	return &Cursor{0, 0, color, flashingColor, false, 0, 0, false}
 }
 
 func (c *Cursor) Render(lp *Launchpad) {
@@ -21,13 +20,17 @@ func (c *Cursor) Render(lp *Launchpad) {
 	}
 	lp.Draw(c.row, c.col, c.color)
 	if c.flashing {
-		lp.SetFlashing(c.row, c.col, &cursorFlashingColor)
+		lp.SetFlashing(c.row, c.col, &c.flashingColor)
 	} else {
 		lp.SetFlashing(c.row, c.col, nil)
 	}
 }
 
-func (c *Cursor) Set(row, col uint8) {
+func (c *Cursor) SetColor(color int) {
+	c.color = color
+}
+
+func (c *Cursor) Move(row, col int) {
 	if c.row == row && c.col == col {
 		return
 	}
@@ -39,14 +42,10 @@ func (c *Cursor) Set(row, col uint8) {
 	c.col = col
 }
 
-func (c *Cursor) IsAt(row, col uint8) bool {
+func (c *Cursor) IsAt(row, col int) bool {
 	return c.row == row && c.col == col
 }
 
 func (c *Cursor) SetFlashing(flashing bool) {
 	c.flashing = flashing
-}
-
-func (c *Cursor) IsFlashing() bool {
-	return c.flashing
 }
