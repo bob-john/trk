@@ -7,18 +7,38 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-var tracks []*Track
+var lp *Launchpad
+var view LaunchpadView
+var model *Model
 
 func main() {
 	err := termbox.Init()
 	must(err)
 	defer termbox.Close()
 
-	tracks = append(tracks, NewTrack(8))
-	tracks = append(tracks, NewTrack(4))
+	lp, err = ConnectLaunchpad()
+	must(err)
+	defer lp.Close()
+	lp.Reset()
 
-	var page int
-	render(page)
+	model = NewModel()
+	view = NewLaunchpadRootView()
+
+	render()
+
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case m := <-lp.In():
+				view.Handle(lp, model, m)
+				render()
+
+			case <-quit:
+				return
+			}
+		}
+	}()
 
 	var done bool
 	for !done {
@@ -30,19 +50,17 @@ func main() {
 				done = true
 
 			case termbox.KeyPgup:
-				if page > 0 {
-					page--
-					render(page)
-				}
+				model.DecPage()
+				render()
 
 			case termbox.KeyPgdn:
-				if page < 0xFF {
-					page++
-					render(page)
-				}
+				model.IncPage()
+				render()
 			}
 		}
 	}
+	close(quit)
+	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 }
 
 func must(err error) {
@@ -58,42 +76,18 @@ func write(x, y int, s string) {
 	}
 }
 
-func render(page int) {
-	for i := 0; i < 16; i++ {
-		var (
-			y    = i
-			step = 16*page + i
-		)
+func render() {
+	view.Update(model)
 
-		write(0, y, fmt.Sprintf("%03X", step))
+	var (
+		page = 1 + model.Page()
+		bar  = fmt.Sprintf("%d:4", 1+model.Cursor()/16)
+		step = 1 + (model.Cursor() % 16)
+	)
 
-		x := 4
-		for _, t := range tracks {
-			var pat string
-			if p, ch := t.Pattern(y); ch || step%16 == 0 {
-				pat = Pattern(p).String()
-			} else {
-				pat = "---"
-			}
-			write(x, y, pat)
-			x += 4
-			for v := 0; v < t.VoiceCount(); v++ {
-				m, ch := t.Muted(y, v)
-				var str string
-				if ch || step%16 == 0 {
-					if m {
-						str = "."
-					} else {
-						str = "#"
-					}
-				} else {
-					str = "-"
-				}
-				write(x, y, str)
-				x++
-			}
-			x++
-		}
-	}
+	write(0, 0, fmt.Sprintf("%03d %s %02d", page, bar, step))
 	termbox.Flush()
+
+	view.Render(lp, model)
+	lp.Flush()
 }
