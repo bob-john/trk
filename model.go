@@ -12,8 +12,8 @@ type Model struct {
 
 func NewModel() *Model {
 	m := new(Model)
-	m.tracks = append(m.tracks, NewTrack(16))
 	m.tracks = append(m.tracks, NewTrack(8))
+	m.tracks = append(m.tracks, NewTrack(4))
 	return m
 }
 

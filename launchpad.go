@@ -14,6 +14,7 @@ type Launchpad struct {
 
 func ConnectLaunchpad() (*Launchpad, error) {
 	d, err := ConnectDevice("MIDIIN2 (LPMiniMK3 MIDI)", "MIDIOUT2 (LPMiniMK3 MIDI)")
+	// d, err := ConnectDevice("MIDIIN2 (LPMiniMK3 MIDI)", "loopMIDI Port")
 	if err != nil {
 		return nil, err
 	}
@@ -21,6 +22,7 @@ func ConnectLaunchpad() (*Launchpad, error) {
 }
 
 func (lp *Launchpad) Reset() {
+	// lp.Write(sysex.SysEx{0, 32, 41, 2, 24, 14, 0})
 	for i := uint8(1); i < 10; i++ {
 		for j := uint8(1); j < 10; j++ {
 			lp.Write(channel.Channel0.NoteOn(i*10+j, 0))

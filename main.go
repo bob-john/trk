@@ -7,11 +7,14 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+var drv midiDriver
 var lp *Launchpad
 var view LaunchpadView
 var model *Model
 
 func main() {
+	quit := make(chan struct{})
+
 	err := termbox.Init()
 	must(err)
 	defer termbox.Close()
@@ -22,11 +25,10 @@ func main() {
 	lp.Reset()
 
 	model = NewModel()
-	view = NewLaunchpadRootView()
+	view = NewLaunchpadSessionView()
 
 	render()
 
-	quit := make(chan struct{})
 	go func() {
 		for {
 			select {

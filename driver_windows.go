@@ -10,6 +10,7 @@ import (
 import (
 	"fmt"
 	"syscall"
+	"unsafe"
 )
 
 var (
@@ -187,13 +188,45 @@ func (d *midiOut) Send(data []byte) error {
 	if len(data) == 0 {
 		return nil
 	}
-	var msg int32
-	for n, b := range data {
-		msg = msg | (int32(b) << (8 * n))
-	}
-	err := C.midiOutShortMsg(d.handle, C.DWORD(msg))
-	if err != C.MMSYSERR_NOERROR {
-		return fmt.Errorf("mm: %d", err)
+	if len(data) < 4 {
+		var msg int32
+		for n, b := range data {
+			msg = msg | (int32(b) << (8 * n))
+		}
+		err := C.midiOutShortMsg(d.handle, C.DWORD(msg))
+		if err != C.MMSYSERR_NOERROR {
+			return fmt.Errorf("mm: %d", err)
+		}
+	} else {
+		fmt.Println(data, len(data))
+		lpData := C.CString(string(data))
+		defer C.free(unsafe.Pointer(lpData))
+		pmh := &C.MIDIHDR{
+			lpData:          C.LPSTR(lpData),
+			dwBufferLength:  C.DWORD(len(data)),
+			dwBytesRecorded: C.DWORD(len(data)),
+		}
+		err := C.midiOutPrepareHeader(d.handle, pmh, C.sizeof_MIDIHDR)
+		if err != C.MMSYSERR_NOERROR {
+			return fmt.Errorf("mm: %v", midiOutError(err))
+		}
+		err = C.midiOutLongMsg(d.handle, pmh, C.sizeof_MIDIHDR)
+		if err != C.MMSYSERR_NOERROR {
+			return fmt.Errorf("mm: %v", midiOutError(err))
+		}
+		err = C.midiOutUnprepareHeader(d.handle, pmh, C.sizeof_MIDIHDR)
+		if err != C.MMSYSERR_NOERROR {
+			return fmt.Errorf("mm: %v", midiOutError(err))
+		}
 	}
 	return nil
+}
+
+type midiOutError C.MMRESULT
+
+func (err midiOutError) Error() string {
+	pszText := C.CString(string(make([]byte, C.MAXERRORLENGTH)))
+	defer C.free(unsafe.Pointer(pszText))
+	C.midiOutGetErrorText(C.MMRESULT(err), pszText, C.MAXERRORLENGTH)
+	return C.GoString(pszText)
 }
