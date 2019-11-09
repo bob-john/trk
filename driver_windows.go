@@ -198,7 +198,6 @@ func (d *midiOut) Send(data []byte) error {
 			return fmt.Errorf("mm: %d", err)
 		}
 	} else {
-		fmt.Println(data, len(data))
 		lpData := C.CString(string(data))
 		defer C.free(unsafe.Pointer(lpData))
 		pmh := &C.MIDIHDR{

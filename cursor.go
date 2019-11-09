@@ -16,10 +16,10 @@ func NewCursor(color uint8) *Cursor {
 
 func (c *Cursor) Render(lp *Launchpad) {
 	if c.moved {
-		lp.Set(c.oldRow, c.oldCol, 0)
+		lp.Draw(c.oldRow, c.oldCol, 0)
 		c.moved = false
 	}
-	lp.Set(c.row, c.col, c.color)
+	lp.Draw(c.row, c.col, c.color)
 	if c.flashing {
 		lp.SetFlashing(c.row, c.col, &cursorFlashingColor)
 	} else {

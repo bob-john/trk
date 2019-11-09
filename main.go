@@ -25,7 +25,7 @@ func main() {
 	lp.Reset()
 
 	model = NewModel()
-	view = NewLaunchpadSessionView()
+	view = &LaunchpadMainView{}
 
 	render()
 

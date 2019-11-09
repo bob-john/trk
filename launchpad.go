@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gomidi/midi"
 	"github.com/gomidi/midi/midimessage/channel"
+	"github.com/gomidi/midi/midimessage/sysex"
 )
 
 type Launchpad struct {
@@ -31,38 +32,9 @@ func (lp *Launchpad) Reset() {
 	lp.color = make(map[uint8]uint8)
 	lp.color2 = make(map[uint8]*uint8)
 	lp.dirty = make(map[uint8]bool)
-}
 
-func (lp *Launchpad) Clear() {
-	for i := uint8(1); i < 10; i++ {
-		for j := uint8(1); j < 10; j++ {
-			lp.Set(i, j, 0)
-			lp.SetFlashing(i, j, nil)
-		}
-	}
-}
-
-func (lp *Launchpad) Set(row, col, color uint8) {
-	loc := row*10 + col
-	lp.dirty[loc] = lp.dirty[loc] || (lp.color[loc] != color)
-	lp.color[loc] = color
-}
-
-func (lp *Launchpad) SetFlashing(row, col uint8, color *uint8) {
-	loc := row*10 + col
-	lp.dirty[loc] = lp.dirty[loc] || (lp.color2[loc] != color)
-	lp.color2[loc] = color
-}
-
-func (lp *Launchpad) SetHorizontalLine(row, col, count, color uint8) {
-	for i := uint8(0); i <= count; i++ {
-		lp.Set(row, col+i, color)
-	}
-}
-
-func (lp *Launchpad) Get(row, col uint8) uint8 {
-	loc := row*10 + col
-	return lp.color[loc]
+	//	lp.Write(sysex.SysEx{0, 32, 41, 2, 24, 11, 7, 60, 60, 30})
+	lp.Write(sysex.SysEx{126, 127, 6, 1})
 }
 
 func (lp *Launchpad) Flush() {
@@ -79,6 +51,32 @@ func (lp *Launchpad) Flush() {
 		}
 		delete(lp.dirty, loc)
 	}
+}
+func (lp *Launchpad) Clear() {
+	for i := uint8(1); i < 10; i++ {
+		for j := uint8(1); j < 10; j++ {
+			lp.Draw(i, j, 0)
+			lp.SetFlashing(i, j, nil)
+		}
+	}
+}
+
+func (lp *Launchpad) Draw(row, col, color uint8) {
+	loc := row*10 + col
+	lp.dirty[loc] = lp.dirty[loc] || (lp.color[loc] != color)
+	lp.color[loc] = color
+}
+
+func (lp *Launchpad) DrawHorizontalLine(row, col, count, color uint8) {
+	for i := uint8(0); i < count; i++ {
+		lp.Draw(row, col+i, color)
+	}
+}
+
+func (lp *Launchpad) SetFlashing(row, col uint8, color *uint8) {
+	loc := row*10 + col
+	lp.dirty[loc] = lp.dirty[loc] || (lp.color2[loc] != color)
+	lp.color2[loc] = color
 }
 
 func (lp *Launchpad) Loc(m midi.Message) uint8 {
@@ -117,4 +115,20 @@ func (lp *Launchpad) Row(m midi.Message) uint8 {
 
 func (lp *Launchpad) Col(m midi.Message) uint8 {
 	return lp.Loc(m) % 10
+}
+
+func (lp *Launchpad) ClearNavigationButtons() {
+	lp.DrawHorizontalLine(9, 1, 4, 0)
+}
+
+func (lp *Launchpad) ClearModeButtons() {
+	lp.DrawHorizontalLine(9, 5, 4, 0)
+}
+
+func (lp *Launchpad) ClearGrid() {
+	for i := uint8(0); i < 8; i++ {
+		for j := uint8(0); j < 8; j++ {
+			lp.Draw(i, j, 0)
+		}
+	}
 }
