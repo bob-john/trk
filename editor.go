@@ -8,11 +8,29 @@ import (
 
 type LineEditor struct {
 	str, prev string
+	i         int
 }
 
 func (e *LineEditor) Reset(str, prev string) {
 	e.str = str
 	e.prev = prev
+	e.i = 0
+}
+
+func (e *LineEditor) ActiveCell() Cell {
+	return e.Cell(e.i)
+}
+
+func (e *LineEditor) MoveToNextCell() {
+	if e.i < e.CellCount()-1 {
+		e.i++
+	}
+}
+
+func (e *LineEditor) MoveToPreviousCell() {
+	if e.i > 0 {
+		e.i--
+	}
 }
 
 func (e *LineEditor) CellCount() int {
@@ -122,6 +140,7 @@ func (c MuteCell) Inc() {
 		c.editor.Replace(c.groupIndex, c.oldGroup)
 	default:
 		c.editor.Replace(c.Index(), "+")
+		c.editor.MoveToNextCell()
 	}
 }
 
@@ -131,6 +150,7 @@ func (c MuteCell) Dec() {
 		c.editor.Replace(c.groupIndex, c.oldGroup)
 	default:
 		c.editor.Replace(c.Index(), "-")
+		c.editor.MoveToNextCell()
 	}
 
 }

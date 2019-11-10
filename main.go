@@ -9,7 +9,6 @@ import (
 var (
 	currentStep = 0
 	editing     = false
-	currentCell = 0
 	editor      = &LineEditor{}
 )
 
@@ -45,36 +44,35 @@ func main() {
 
 			case termbox.KeyArrowUp:
 				if editing {
-					editor.Cell(currentCell).Inc()
+					editor.ActiveCell().Inc()
 				} else if currentStep > 0 {
 					currentStep--
 				}
 
 			case termbox.KeyArrowDown:
 				if editing {
-					editor.Cell(currentCell).Dec()
+					editor.ActiveCell().Dec()
 				} else if currentStep < 0xfff {
 					currentStep++
 				}
 
 			case termbox.KeyDelete, termbox.KeyBackspace:
 				if editing {
-					editor.Cell(currentCell).Clear()
+					editor.ActiveCell().Clear()
 				}
 
 			case termbox.KeyArrowLeft:
-				if currentCell > 0 {
-					currentCell--
+				if editing {
+					editor.MoveToPreviousCell()
 				}
 
 			case termbox.KeyArrowRight:
-				if currentCell < editor.CellCount()-1 {
-					currentCell++
+				if editing {
+					editor.MoveToNextCell()
 				}
 
 			case termbox.KeyEnter:
 				editing = !editing
-				currentCell = 0
 				if editing {
 					editor.Reset(line(currentStep), "*** A01 ++++++++ A01 ++++")
 				}
@@ -105,7 +103,7 @@ func render() {
 		}
 		SetString(0, i, line, fg, bg)
 		if i == 8 && editing {
-			cell := editor.Cell(currentCell)
+			cell := editor.ActiveCell()
 			SetString(cell.Index(), i, cell.String(), fg|termbox.AttrReverse, bg)
 		}
 	}
