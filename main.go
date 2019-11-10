@@ -65,6 +65,7 @@ func main() {
 					editor.ActiveCell().Clear()
 				} else {
 					seq.Insert(seq.emptyLine(currentStep))
+					seq.WriteFile(tmpFilePath)
 				}
 
 			case termbox.KeyArrowLeft:
