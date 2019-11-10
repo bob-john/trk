@@ -105,11 +105,29 @@ func (s *Seq) ReadFile(path string) error {
 
 func (s *Seq) Play(step int, digitakt, digitone *Device) {
 	line := s.Line(step)
-	if p := DecodePattern(line[4 : 4+3]); p != -1 && digitakt != nil {
-		digitakt.Write(channel.Channel9.ProgramChange(uint8(p)))
+	if digitakt != nil {
+		if p := DecodePattern(line[4 : 4+3]); p != -1 {
+			digitakt.Write(channel.Channel9.ProgramChange(uint8(p)))
+		}
+		for ch, m := range line[8 : 8+8] {
+			if m == '+' {
+				digitakt.Write(channel.Channel(ch).ControlChange(94, 0))
+			} else if m == '-' {
+				digitakt.Write(channel.Channel(ch).ControlChange(94, 1))
+			}
+		}
 	}
-	if p := DecodePattern(line[17 : 17+3]); p != -1 && digitone != nil {
-		digitone.Write(channel.Channel9.ProgramChange(uint8(p)))
+	if digitone != nil {
+		if p := DecodePattern(line[17 : 17+3]); p != -1 {
+			digitone.Write(channel.Channel9.ProgramChange(uint8(p)))
+		}
+		for ch, m := range line[21 : 21+4] {
+			if m == '+' {
+				digitone.Write(channel.Channel(ch).ControlChange(94, 0))
+			} else if m == '-' {
+				digitone.Write(channel.Channel(ch).ControlChange(94, 1))
+			}
+		}
 	}
 }
 
