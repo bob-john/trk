@@ -63,6 +63,8 @@ func main() {
 			case termbox.KeyDelete, termbox.KeyBackspace:
 				if editing {
 					editor.ActiveCell().Clear()
+				} else {
+					seq.Insert(seq.emptyLine(currentStep))
 				}
 
 			case termbox.KeyArrowLeft:

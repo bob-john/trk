@@ -25,7 +25,7 @@ func (s *Seq) Line(step int) string {
 func (s *Seq) ConsolidatedLine(step int) string {
 	line, j := s.emptyLine(step), 0
 	for i, l := range s.lines {
-		if i <= j || i > step {
+		if i < j || i > step {
 			continue
 		}
 		r := []rune(line)

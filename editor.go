@@ -93,7 +93,7 @@ func (c PatternCell) Inc() {
 	str := c.String()
 	switch str {
 	case "...":
-		c.editor.Replace(c.index, c.old)
+		c.setDefaultValue()
 	default:
 		p := DecodePattern(str)
 		if p < 127 {
@@ -106,12 +106,20 @@ func (c PatternCell) Dec() {
 	str := c.String()
 	switch str {
 	case "...":
-		c.editor.Replace(c.index, c.old)
+		c.setDefaultValue()
 	default:
 		p := DecodePattern(str)
 		if p > 0 {
 			c.editor.Replace(c.index, EncodePattern(p-1))
 		}
+	}
+}
+
+func (c PatternCell) setDefaultValue() {
+	if c.old != "..." {
+		c.editor.Replace(c.index, c.old)
+	} else {
+		c.editor.Replace(c.index, "A01")
 	}
 }
 
@@ -137,7 +145,7 @@ func (c MuteCell) String() string {
 func (c MuteCell) Inc() {
 	switch c.String() {
 	case ".":
-		c.editor.Replace(c.groupIndex, c.oldGroup)
+		c.setDefaultValue()
 	default:
 		c.editor.Replace(c.Index(), "+")
 		c.editor.MoveToNextCell()
@@ -147,7 +155,7 @@ func (c MuteCell) Inc() {
 func (c MuteCell) Dec() {
 	switch c.String() {
 	case ".":
-		c.editor.Replace(c.groupIndex, c.oldGroup)
+		c.setDefaultValue()
 	default:
 		c.editor.Replace(c.Index(), "-")
 		c.editor.MoveToNextCell()
@@ -157,6 +165,14 @@ func (c MuteCell) Dec() {
 
 func (c MuteCell) Clear() {
 	c.editor.Replace(c.groupIndex, strings.Repeat(".", len(c.oldGroup)))
+}
+
+func (c MuteCell) setDefaultValue() {
+	if strings.ContainsAny(c.oldGroup, "+-") {
+		c.editor.Replace(c.groupIndex, c.oldGroup)
+	} else {
+		c.editor.Replace(c.groupIndex, strings.Repeat("+", len(c.oldGroup)))
+	}
 }
 
 func DecodePattern(str string) int {
