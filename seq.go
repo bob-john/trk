@@ -100,7 +100,7 @@ func (s *Seq) ReadFile(path string) error {
 		return err
 	}
 	defer f.Close()
-	return seq.Read(f)
+	return s.Read(f)
 }
 
 func (s *Seq) Play(step int, digitakt, digitone *Device) {
