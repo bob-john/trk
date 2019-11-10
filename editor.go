@@ -72,6 +72,8 @@ type Cell interface {
 	String() string
 	Inc()
 	Dec()
+	PageInc()
+	PageDec()
 	Clear()
 }
 
@@ -112,6 +114,20 @@ func (c PatternCell) Dec() {
 		if p > 0 {
 			c.editor.Replace(c.index, EncodePattern(p-1))
 		}
+	}
+}
+
+func (c PatternCell) PageInc() {
+	p := DecodePattern(c.String())
+	if p+16 < 128 {
+		c.editor.Replace(c.index, EncodePattern(p+16))
+	}
+}
+
+func (c PatternCell) PageDec() {
+	p := DecodePattern(c.String())
+	if p-16 > -1 {
+		c.editor.Replace(c.index, EncodePattern(p-16))
 	}
 }
 
@@ -160,7 +176,14 @@ func (c MuteCell) Dec() {
 		c.editor.Replace(c.Index(), "-")
 		c.editor.MoveToNextCell()
 	}
+}
 
+func (c MuteCell) PageInc() {
+	c.editor.Replace(c.index, strings.Repeat("+", len(c.oldGroup)))
+}
+
+func (c MuteCell) PageDec() {
+	c.editor.Replace(c.index, strings.Repeat("-", len(c.oldGroup)))
 }
 
 func (c MuteCell) Clear() {

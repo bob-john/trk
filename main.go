@@ -158,7 +158,9 @@ func main() {
 				}
 
 			case termbox.KeyPgup:
-				if !editing {
+				if editing {
+					editor.ActiveCell().PageInc()
+				} else {
 					currentStep -= 16
 					if currentStep < 0 {
 						currentStep = 0
@@ -167,7 +169,9 @@ func main() {
 				}
 
 			case termbox.KeyPgdn:
-				if !editing {
+				if editing {
+					editor.ActiveCell().PageDec()
+				} else {
 					currentStep += 16
 					if currentStep > 0xfff {
 						currentStep = 0xfff
