@@ -1,7 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/nsf/termbox-go"
 )
@@ -10,6 +12,7 @@ var (
 	currentStep = 0
 	editing     = false
 	editor      = &LineEditor{}
+	seq         = &Seq{}
 )
 
 func main() {
@@ -17,19 +20,16 @@ func main() {
 	must(err)
 	defer termbox.Close()
 
-	// SetString(0, 0, "01", termbox.ColorDefault, termbox.ColorDefault)
-	// SetString(3, 0, "A01", termbox.ColorDefault, termbox.ColorDefault)
-	// SetString(7, 0, strings.Repeat("\u258E", 8), termbox.ColorDefault, termbox.ColorDefault)
-	// SetString(16, 0, "A01", termbox.ColorDefault, termbox.ColorDefault)
-	// SetString(20, 0, strings.Repeat("\u258E", 4), termbox.ColorDefault, termbox.ColorDefault)
-	// SetString(0, 1, "02", termbox.ColorDefault, termbox.ColorDefault)
-	// SetString(3, 1, strings.Repeat(".", 3), termbox.ColorDefault, termbox.ColorDefault|termbox.AttrReverse)
-	// SetString(7, 1, strings.Repeat(".", 8), termbox.ColorDefault, termbox.ColorDefault|termbox.AttrReverse)
-	// SetString(16, 1, strings.Repeat(".", 3), termbox.ColorDefault, termbox.ColorDefault|termbox.AttrReverse)
-	// SetString(20, 1, strings.Repeat("\u258e", 4), termbox.ColorDefault, termbox.ColorDefault|termbox.AttrReverse)
+	user, err := user.Current()
+	must(err)
+	home := user.HomeDir
 
-	// SetString(0, 1, fmt.Sprintf("%02d %s %s", 2+step, pc.String(), muted.String()), termbox.ColorDefault, termbox.ColorRed)
-	// SetString(0, 2, fmt.Sprintf("%02d %s %s", 3+step, pc.String(), muted.String()), termbox.ColorDefault, termbox.ColorDefault)
+	appDir := filepath.Join(home, ".trk")
+	err = os.MkdirAll(appDir, 0700)
+	must(err)
+	tmpFilePath := filepath.Join(appDir, "tmp.trk")
+
+	seq.ReadFile(tmpFilePath)
 
 	render()
 
@@ -40,7 +40,11 @@ func main() {
 		case termbox.EventKey:
 			switch e.Key {
 			case termbox.KeyEsc:
-				done = true
+				if editing {
+					editing = false
+				} else {
+					done = true
+				}
 
 			case termbox.KeyArrowUp:
 				if editing {
@@ -74,7 +78,26 @@ func main() {
 			case termbox.KeyEnter:
 				editing = !editing
 				if editing {
-					editor.Reset(line(currentStep), "*** A01 ++++++++ A01 ++++")
+					editor.Reset(seq.Line(currentStep), seq.ConsolidatedLine(currentStep))
+				} else {
+					seq.Insert(editor.Line())
+					seq.WriteFile(tmpFilePath)
+				}
+
+			case termbox.KeyPgup:
+				if !editing {
+					currentStep -= 16
+					if currentStep < 0 {
+						currentStep = 0
+					}
+				}
+
+			case termbox.KeyPgdn:
+				if !editing {
+					currentStep += 16
+					if currentStep > 0xfff {
+						currentStep = 0xfff
+					}
 				}
 			}
 		}
@@ -97,7 +120,7 @@ func render() {
 		if i == 8 && !editing {
 			fg = fg | termbox.AttrReverse
 		}
-		line := line(step)
+		line := seq.Line(step)
 		if i == 8 && editing {
 			line = editor.Line()
 		}
@@ -108,10 +131,6 @@ func render() {
 		}
 	}
 	termbox.Flush()
-}
-
-func line(step int) string {
-	return fmt.Sprintf("%03X ... ........ ... ....", step)
 }
 
 // var drv midiDriver
