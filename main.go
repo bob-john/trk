@@ -1,18 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 
+	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
 
 var (
-	currentStep = 0
-	editing     = false
-	editor      = &LineEditor{}
-	seq         = &Seq{}
+	currentStep        = 0
+	editing            = false
+	editor             = &LineEditor{}
+	seq                = &Seq{}
+	digitakt, digitone *Device
 )
 
 func main() {
@@ -31,7 +34,70 @@ func main() {
 
 	seq.ReadFile(tmpFilePath)
 
-	render()
+	digitakt, _ = ConnectDevice("Elektron Digitakt", "Elektron Digitakt")
+	digitone, _ = ConnectDevice("Elektron Digitone", "Elektron Digitone")
+
+	var (
+		quit       = make(chan struct{})
+		transportC = make(chan realtime.Message)
+		renderC    = make(chan struct{})
+		playing    = false
+		tick       = 0
+	)
+	if digitakt != nil {
+		defer digitakt.Close()
+		go listenTransport(digitakt, transportC, quit)
+	}
+	if digitone != nil {
+		defer digitone.Close()
+	}
+	go func() {
+		for {
+			select {
+			case <-renderC:
+				render()
+			case <-quit:
+				return
+			}
+		}
+	}()
+	go func() {
+		for {
+			select {
+			case m := <-transportC:
+				switch m {
+				case realtime.TimingClock:
+					if playing && !editing {
+						tick++
+						if tick == 12 {
+							seq.Play(currentStep+1, digitakt, digitone)
+						} else if tick == 24 {
+							currentStep++
+							tick = 0
+							renderC <- struct{}{}
+						}
+					}
+
+				case realtime.Start:
+					playing = true
+					tick = 0
+
+				case realtime.Continue:
+					playing = true
+
+				case realtime.Stop:
+					playing = false
+				}
+
+			case <-quit:
+				return
+			}
+		}
+	}()
+
+	renderC <- struct{}{}
+
+	seq.Play(currentStep, digitakt, digitone)
 
 	var done bool
 	for !done {
@@ -51,6 +117,7 @@ func main() {
 					editor.ActiveCell().Inc()
 				} else if currentStep > 0 {
 					currentStep--
+					seq.Play(currentStep, digitakt, digitone)
 				}
 
 			case termbox.KeyArrowDown:
@@ -58,6 +125,7 @@ func main() {
 					editor.ActiveCell().Dec()
 				} else if currentStep < 0xfff {
 					currentStep++
+					seq.Play(currentStep, digitakt, digitone)
 				}
 
 			case termbox.KeyDelete, termbox.KeyBackspace:
@@ -66,6 +134,7 @@ func main() {
 				} else {
 					seq.Insert(seq.emptyLine(currentStep))
 					seq.WriteFile(tmpFilePath)
+					seq.Play(currentStep, digitakt, digitone)
 				}
 
 			case termbox.KeyArrowLeft:
@@ -85,6 +154,7 @@ func main() {
 				} else {
 					seq.Insert(editor.Line())
 					seq.WriteFile(tmpFilePath)
+					seq.Play(currentStep, digitakt, digitone)
 				}
 
 			case termbox.KeyPgup:
@@ -93,6 +163,7 @@ func main() {
 					if currentStep < 0 {
 						currentStep = 0
 					}
+					seq.Play(currentStep, digitakt, digitone)
 				}
 
 			case termbox.KeyPgdn:
@@ -101,12 +172,28 @@ func main() {
 					if currentStep > 0xfff {
 						currentStep = 0xfff
 					}
+					seq.Play(currentStep, digitakt, digitone)
 				}
 			}
 		}
-		render()
+		renderC <- struct{}{}
 	}
+	close(quit)
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+}
+
+func listenTransport(synth *Device, transportC chan<- realtime.Message, quit <-chan struct{}) {
+	for {
+		select {
+		case m := <-synth.In():
+			if m, ok := m.(realtime.Message); ok {
+				transportC <- m
+			}
+
+		case <-quit:
+			return
+		}
+	}
 }
 
 func render() {
@@ -133,6 +220,8 @@ func render() {
 			SetString(cell.Index(), i, cell.String(), fg|termbox.AttrReverse, bg)
 		}
 	}
+	SetString(30, 0, fmt.Sprintf("DT: %v", digitakt != nil), termbox.ColorDefault, termbox.ColorDefault)
+	SetString(30, 1, fmt.Sprintf("DN: %v", digitone != nil), termbox.ColorDefault, termbox.ColorDefault)
 	termbox.Flush()
 }
 

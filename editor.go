@@ -176,6 +176,9 @@ func (c MuteCell) setDefaultValue() {
 }
 
 func DecodePattern(str string) int {
+	if strings.ContainsAny(str, ".") {
+		return -1
+	}
 	bank := int(str[0] - 'A')
 	trig, _ := strconv.Atoi(str[1:])
 	return bank*16 + trig - 1
