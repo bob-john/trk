@@ -43,7 +43,7 @@ func (s *Seq) ConsolidatedLine(step int) string {
 
 func (s *Seq) Insert(line string) {
 	step := s.parseStep(line)
-	if strings.ContainsAny(line[4:], "ABCDEFGH0123456789") {
+	if strings.ContainsAny(line[4:], "ABCDEFGH0123456789+-") {
 		if s.lines == nil {
 			s.lines = make(map[int]string)
 		}
