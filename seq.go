@@ -19,11 +19,24 @@ func (s *Seq) Line(step int) string {
 	if ok {
 		return line
 	}
-	return fmt.Sprintf("%03X ... ........ ... ....", step)
+	return s.emptyLine(step)
 }
 
 func (s *Seq) ConsolidatedLine(step int) string {
-	return fmt.Sprintf("%03X A01 ++++++++ A01 ++++", step)
+	line, j := s.emptyLine(step), 0
+	for i, l := range s.lines {
+		if i <= j || i > step {
+			continue
+		}
+		r := []rune(line)
+		for n, c := range l[4:] {
+			if c != '.' {
+				r[4+n] = c
+			}
+		}
+		line, j = string(r), i
+	}
+	return line
 }
 
 func (s *Seq) Insert(line string) {
@@ -91,4 +104,8 @@ func (s *Seq) ReadFile(path string) error {
 func (s *Seq) parseStep(line string) int {
 	step, _ := strconv.ParseInt(line[:3], 16, 32)
 	return int(step)
+}
+
+func (s *Seq) emptyLine(step int) string {
+	return fmt.Sprintf("%03X ... ........ ... ....", step)
 }
