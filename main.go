@@ -14,7 +14,7 @@ const (
 
 var (
 	arr *Arrangement
-	cur Coordinate
+	cur *Pen
 )
 
 func main() {
@@ -30,6 +30,8 @@ func main() {
 	arr, err = LoadArrangement(os.Args[1])
 	must(err)
 
+	cur = NewPen(arr)
+
 	err = termbox.Init()
 	must(err)
 	defer termbox.Close()
@@ -42,31 +44,9 @@ func main() {
 			switch e.Key {
 			case termbox.KeyEsc:
 				done = true
-
-			case termbox.KeyArrowUp:
-				cur.Row--
-			case termbox.KeyPgup:
-				cur.Row -= pageSize
-			case termbox.KeyHome:
-				cur.Row = 0
-			case termbox.KeyArrowDown:
-				cur.Row++
-			case termbox.KeyPgdn:
-				cur.Row += pageSize
-			case termbox.KeyEnd:
-				cur.Row = arr.RowCount() - 1
-
-			case termbox.KeyArrowLeft:
-				cur.Col--
-			case termbox.KeyArrowRight:
-				cur.Col++
-
-			case termbox.KeyDelete, termbox.KeyBackspace:
-				arr.Cell(cur).Clear()
 			}
 		}
-		cur.Row = clamp(cur.Row, 0, arr.RowCount()-1)
-		cur.Col = clamp(cur.Col, 0, arr.Row(cur.Row).CellCount()-1)
+		cur.Handle(e)
 		render()
 	}
 }
@@ -91,15 +71,15 @@ func min(a, b int) int {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	for i := 0; i < pageSize; i++ {
-		r := cur.Row - 8 + i
+		r := cur.Row() - 8 + i
 		if r < 0 || r >= arr.RowCount() {
 			continue
 		}
 		line := arr.Row(r).String()
 		SetString(0, i, line, termbox.ColorBlue, termbox.ColorDefault)
-		cell := arr.Row(r).Cell(cur.Col)
+		cell := cur.Cell()
 		if i == 8 {
-			SetString(arr.Row(cur.Row).Range(cur.Col).Index, i, cell.String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
+			SetString(cur.Range().Index, i, cell.String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
 		}
 	}
 	termbox.Flush()
