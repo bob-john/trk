@@ -60,6 +60,9 @@ func main() {
 				cur.Col--
 			case termbox.KeyArrowRight:
 				cur.Col++
+
+			case termbox.KeyDelete, termbox.KeyBackspace:
+				arr.Cell(cur).Clear()
 			}
 		}
 		cur.Row = clamp(cur.Row, 0, arr.RowCount()-1)

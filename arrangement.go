@@ -36,6 +36,18 @@ func (a *Arrangement) Row(i int) Row {
 	return Row{a, i}
 }
 
+func (a *Arrangement) Cell(c Coordinate) Cell {
+	return a.Row(c.Row).Cell(c.Col)
+}
+
+func (a *Arrangement) Set(row, col int, value string) {
+	a.rows[row][col] = value
+}
+
+func (a *Arrangement) Get(row, col int) string {
+	return a.rows[row][col]
+}
+
 type Row struct {
 	*Arrangement
 	row int
@@ -72,7 +84,7 @@ func (r Row) Range(i int) Range {
 }
 
 func (r Row) Index() Cell {
-	return indexCell{r.Arrangement, r.row}
+	return indexCell{r.Arrangement, r.row, 0}
 }
 
 func (r Row) Digitakt() Part {
@@ -110,13 +122,16 @@ func (p Part) Mute() Cell {
 }
 
 type Cell interface {
+	Clear()
 	String() string
 }
 
 type indexCell struct {
 	*Arrangement
-	row int
+	row, col int
 }
+
+func (c indexCell) Clear() {}
 
 func (c indexCell) String() string {
 	return fmt.Sprintf("%3d", 1+c.row)
@@ -127,8 +142,12 @@ type patternCell struct {
 	row, col int
 }
 
+func (c patternCell) Clear() {
+	c.Set(c.row, c.col, "...")
+}
+
 func (c patternCell) String() string {
-	return c.rows[c.row][c.col]
+	return c.Get(c.row, c.col)
 }
 
 type muteCell struct {
@@ -137,8 +156,12 @@ type muteCell struct {
 	len      int
 }
 
+func (c muteCell) Clear() {
+	c.Set(c.row, c.col, strings.Repeat(".", c.len))
+}
+
 func (c muteCell) String() string {
-	return c.rows[c.row][c.col]
+	return c.Get(c.row, c.col)
 }
 
 type lenCell struct {
@@ -146,6 +169,8 @@ type lenCell struct {
 	row, col int
 }
 
+func (c lenCell) Clear() {}
+
 func (c lenCell) String() string {
-	return c.rows[c.row][c.col]
+	return c.Get(c.row, c.col)
 }
