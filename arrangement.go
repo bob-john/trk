@@ -44,7 +44,7 @@ func (a *Arrangement) Cell(row, col int) Cell {
 	return a.Row(row).Cell(col)
 }
 
-func (a *Arrangement) SetRaw(row, col int, value string) {
+func (a *Arrangement) Set(row, col int, value string) {
 	a.rows[row][col] = value
 }
 
@@ -126,8 +126,7 @@ func (p Part) Mute() Cell {
 }
 
 type Cell interface {
-	Input(termbox.Event) bool
-	Set(string, bool)
+	Input([]termbox.Event)
 	String() string
 }
 
@@ -136,11 +135,7 @@ type indexCell struct {
 	row, col int
 }
 
-func (c indexCell) Set(value string, edited bool) {}
-
-func (c indexCell) Input(e termbox.Event) bool {
-	return false
-}
+func (c indexCell) Input(events []termbox.Event) {}
 
 func (c indexCell) String() string {
 	return fmt.Sprintf("%3d", 1+c.row)
@@ -151,15 +146,7 @@ type patternCell struct {
 	row, col int
 }
 
-func (c patternCell) Set(value string, edited bool) {}
-
-func (c patternCell) Input(e termbox.Event) bool {
-	if isKeyDelete(e) {
-		c.SetRaw(c.row, c.col, "...")
-		return true
-	}
-	return false
-}
+func (c patternCell) Input(events []termbox.Event) {}
 
 func (c patternCell) String() string {
 	return c.Get(c.row, c.col)
@@ -171,34 +158,26 @@ type muteCell struct {
 	len      int
 }
 
-func (c muteCell) Set(val string, edited bool) {
+func (c muteCell) Input(events []termbox.Event) {
 	muted := make([]bool, c.len)
-	for _, ch := range val {
-		if ch == '-' {
+	for _, e := range events {
+		if !isKeyDigit(e) {
 			continue
 		}
-		n := int(ch - '1')
-		if n >= 0 && n < len(muted) {
-			muted[n] = true
+		n := int(e.Ch - '1')
+		if n >= 0 && n < c.len {
+			muted[n] = !muted[n]
 		}
 	}
-	var res string
-	for n, ok := range muted {
-		if ok {
-			res += strconv.Itoa(1 + n)
+	var val string
+	for n, m := range muted {
+		if m {
+			val += "-"
 		} else {
-			res += "-"
+			val += strconv.Itoa(1 + n)
 		}
 	}
-	c.SetRaw(c.row, c.col, res)
-}
-
-func (c muteCell) Input(e termbox.Event) bool {
-	if isKeyDelete(e) {
-		c.SetRaw(c.row, c.col, strings.Repeat(".", c.len))
-		return true
-	}
-	return false
+	c.Set(c.row, c.col, val)
 }
 
 func (c muteCell) String() string {
@@ -210,19 +189,7 @@ type lenCell struct {
 	row, col int
 }
 
-func (c lenCell) Set(value string, edited bool) {}
-
-func (c lenCell) Input(e termbox.Event) bool {
-	if isKeyDigit(e) {
-		// b := c.Buffer(c.row, c.col)
-		// n, _ := strconv.Atoi(b.String() + string(e.Ch))
-		// n = clamp(n, 1, 1024)
-		// b.Set(strconv.Itoa(n))
-	} else if isKeyEnter(e) {
-		// c.Commit(c.row, c.col)
-	}
-	return false
-}
+func (c lenCell) Input(events []termbox.Event) {}
 
 func (c lenCell) String() string {
 	return c.Get(c.row, c.col)
