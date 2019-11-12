@@ -1,100 +1,38 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/gomidi/midi/midimessage/channel"
-	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
 
-var (
-	seq     = []string{}
-	cur     = Location{}
-	editing = false
+const (
+	pageSize = 16
+)
 
-	digitakt, digitone *Device
+var (
+	arr *Arrangement
+	cur Coordinate
 )
 
 func main() {
-	err := termbox.Init()
+	var err error
+
+	if len(os.Args) != 2 {
+		fmt.Println("usage: trk <path>")
+		fmt.Println("trk: invalid command line")
+		os.Exit(1)
+	}
+
+	//TODO Bring back tmp.trk
+	arr, err = LoadArrangement(os.Args[1])
+	must(err)
+
+	err = termbox.Init()
 	must(err)
 	defer termbox.Close()
-
-	user, err := user.Current()
-	must(err)
-	home := user.HomeDir
-	appDir := filepath.Join(home, ".trk")
-	err = os.MkdirAll(appDir, 0700)
-	must(err)
-	tmpFilePath := filepath.Join(appDir, "tmp.trk")
-
-	seq, err = readFile(tmpFilePath)
-	if err != nil {
-		seq = []string{newRow()}
-	}
-
-	digitakt, _ = ConnectDevice("Elektron Digitakt", "Elektron Digitakt")
-	digitone, _ = ConnectDevice("Elektron Digitone", "Elektron Digitone")
-
-	var (
-		quit       = make(chan struct{})
-		transportC = make(chan realtime.Message)
-	)
-	defer close(quit)
-	if digitakt != nil {
-		defer digitakt.Close()
-		go listenTransport(digitakt, transportC, quit)
-	}
-	if digitone != nil {
-		defer digitone.Close()
-	}
-
-	go func() {
-		var (
-			tick    int
-			playing bool
-		)
-		for {
-			select {
-			case m := <-transportC:
-				switch m {
-				case realtime.TimingClock:
-					if playing {
-						tick++
-						SetString(30, 0, fmt.Sprintf("%d of %d            ", tick/6, getRowLen()), termbox.ColorDefault, termbox.ColorDefault)
-						termbox.Flush()
-						if tick == getRowLen()*6-12 {
-							if cur.Row+1 < len(seq) {
-								Row(seq[cur.Row+1]).Play(digitakt, digitone)
-							}
-						} else if tick == getRowLen()*6 {
-							if cur.Row+1 < len(seq) {
-								cur.Row++
-								render()
-							}
-							tick = 0
-						}
-					}
-				case realtime.Start:
-					playing = true
-					tick = 0
-				case realtime.Continue:
-					playing = true
-				case realtime.Stop:
-					playing = false
-				}
-			case <-quit:
-				return
-			}
-		}
-	}()
 
 	var done bool
 	for !done {
@@ -106,194 +44,28 @@ func main() {
 				done = true
 
 			case termbox.KeyArrowUp:
-				if editing {
-					getCell(cur).Inc()
-				} else {
-					cur.Row--
-				}
+				cur.Row--
 			case termbox.KeyPgup:
-				if editing {
-					getCell(cur).LargeInc()
-				} else {
-					cur.Row -= 16
-				}
+				cur.Row -= pageSize
 			case termbox.KeyHome:
-				if !editing {
-					cur.Row = 0
-				}
+				cur.Row = 0
 			case termbox.KeyArrowDown:
-				if editing {
-					getCell(cur).Dec()
-				} else {
-					cur.Row++
-				}
+				cur.Row++
 			case termbox.KeyPgdn:
-				if editing {
-					getCell(cur).LargeDec()
-				} else {
-					cur.Row += 16
-				}
+				cur.Row += pageSize
 			case termbox.KeyEnd:
-				if !editing {
-					cur.Row = len(seq)
-				}
+				cur.Row = arr.RowCount() - 1
 
 			case termbox.KeyArrowLeft:
-				if editing {
-					cur.Cell--
-				}
+				cur.Col--
 			case termbox.KeyArrowRight:
-				if editing {
-					cur.Cell++
-				}
-
-			case termbox.KeyEnter:
-				editing = !editing
-			case termbox.KeyBackspace, termbox.KeyDelete:
-				if editing {
-					getCell(cur).Clear()
-				} else {
-					seq = append(seq[:cur.Row], seq[cur.Row+1:]...)
-					if len(seq) == 0 {
-						seq = append(seq, newRow())
-					}
-				}
-			case termbox.KeyInsert:
-				seq = append(seq[:cur.Row+1], append([]string{newRow()}, seq[cur.Row+1:]...)...)
-				cur.Row++
-				editing = true
+				cur.Col++
 			}
 		}
-		cur.Row = clamp(cur.Row, 0, len(seq)-1)
-		cur.Cell = clamp(cur.Cell, 0, 14)
+		cur.Row = clamp(cur.Row, 0, arr.RowCount()-1)
+		cur.Col = clamp(cur.Col, 0, arr.Row(cur.Row).CellCount()-1)
 		render()
-		if editing {
-			writeFile(tmpFilePath)
-		}
-		Row(seq[cur.Row]).Play(digitakt, digitone)
 	}
-}
-
-func render() {
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	for i := 0; i < 16; i++ {
-		row := cur.Row - 8 + i
-		if row < 0 || len(seq) <= row {
-			continue
-		}
-		fg, bg := termbox.ColorBlue, termbox.ColorDefault
-		if i == 8 && !editing {
-			fg = fg | termbox.AttrReverse
-		}
-		line := seq[row]
-		SetString(0, i, fmt.Sprintf("%3d %s", 1+row, line), fg, bg)
-		if i == 8 {
-			cell := getCell(cur)
-			SetString(4+cell.Range().Index, i, cell.Range().Substr(line), fg|termbox.AttrReverse, bg)
-		}
-	}
-	termbox.Flush()
-}
-
-func newRow() string {
-	return "... ........ ... ....   16"
-}
-
-func getCell(c Location) Cell {
-	line := &seq[c.Row]
-	switch c.Cell {
-	case 0:
-		return NewPatternCell(line, 0, 3)
-	case 1, 2, 3, 4, 5, 6, 7, 8:
-		return NewMuteCell(line, 4+c.Cell-1, 1)
-	case 9:
-		return NewPatternCell(line, 13, 3)
-	case 10, 11, 12, 13:
-		return NewMuteCell(line, 17+c.Cell-10, 1)
-	case 14:
-		return NewLenCell(line, 22, 4)
-	}
-	return nil
-}
-
-func getRowLen() int {
-	return Row(seq[cur.Row]).Len()
-}
-
-type Row string
-
-func (r Row) Play(digitakt, digitone *Device) {
-	if digitakt != nil {
-		r.Digitakt().Play(digitakt)
-	}
-	if digitone != nil {
-		r.Digitone().Play(digitone)
-	}
-}
-
-func (r Row) Len() int {
-	val, _ := strconv.Atoi(strings.TrimSpace(Range{22, 4}.Substr(string(r))))
-	return val
-}
-
-func (r Row) Digitakt() Part {
-	return Part(string(r)[0:12])
-}
-
-func (r Row) Digitone() Part {
-	return Part(string(r)[13:21])
-}
-
-func (r Row) String() string {
-	return string(r)
-}
-
-type Part string
-
-func (p Part) Play(out *Device) {
-	if p, ok := p.Pattern(); ok {
-		out.Write(channel.Channel9.ProgramChange(uint8(p)))
-	}
-	p.Mute().Play(out)
-}
-
-func (p Part) Pattern() (int, bool) {
-	if strings.ContainsAny(string(p)[0:3], ".") {
-		return 0, false
-	}
-	bank := string(p)[0]
-	trig, _ := strconv.Atoi(string(p)[1:3])
-	return int(bank-'A')*16 + trig - 1, true
-}
-
-func (p Part) Mute() Mute {
-	return Mute(string(p[4:]))
-}
-
-type Mute string
-
-func (m Mute) Play(out *Device) {
-	c := m.ChannelCount()
-	for n := 0; n < c; n++ {
-		var val uint8
-		switch string(m)[n] {
-		case '.':
-			continue
-		case '+':
-			val = 0
-		case '-':
-			val = 1
-		}
-		out.Write(channel.Channel(n).ControlChange(94, val))
-	}
-}
-
-func (m Mute) Channel(n int) (bool, bool) {
-	return string(m)[n] == '-', string(m)[n] != '.'
-}
-
-func (m Mute) ChannelCount() int {
-	return len(m)
 }
 
 func clamp(val, min, max int) int {
@@ -306,62 +78,391 @@ func clamp(val, min, max int) int {
 	return val
 }
 
-func snap(val, grid int) int {
-	return (val / grid) * grid
-}
-
-type Location struct {
-	Row, Cell int
-}
-
-func writeFile(path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-	defer f.Close()
-	for _, line := range seq {
-		_, err := fmt.Fprintln(f, line)
-		if err != nil {
-			return err
+	return b
+}
+
+func render() {
+	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+	for i := 0; i < pageSize; i++ {
+		r := cur.Row - 8 + i
+		if r < 0 || r >= arr.RowCount() {
+			continue
+		}
+		line := arr.Row(r).String()
+		SetString(0, i, line, termbox.ColorBlue, termbox.ColorDefault)
+		cell := arr.Row(r).Cell(cur.Col)
+		if i == 8 {
+			SetString(arr.Row(cur.Row).Range(cur.Col).Index, i, cell.String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
 		}
 	}
-	return f.Close()
+	termbox.Flush()
 }
 
-func readFile(path string) ([]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
+func pad(str string, ch rune, total int) string {
+	count := total - len(str)
+	if count <= 0 {
+		return str
 	}
-	defer f.Close()
-	var seq []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			seq = append(seq, line)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return seq, f.Close()
+	return str + strings.Repeat(string(ch), count)
 }
 
-func listenTransport(synth *Device, transportC chan<- realtime.Message, quit <-chan struct{}) {
-	for {
-		select {
-		case m := <-synth.In():
-			if m, ok := m.(realtime.Message); ok {
-				transportC <- m
-			}
-
-		case <-quit:
-			return
-		}
+func colWidth(header string) int {
+	switch strings.ToUpper(header) {
+	case "LEN":
+		return 4
+	case "DT.P", "DN.P", "P.DT", "P.DN":
+		return 4 // 3
+	case "DT.M", "M.DT":
+		return 8
+	case "DN.M", "M.DN":
+		return 4
+	default:
+		return len(header)
 	}
 }
+
+// var (
+// 	seq     = []string{}
+// 	cur     = Location{}
+// 	editing = false
+
+// 	digitakt, digitone *Device
+// )
+
+// func main() {
+// 	err := termbox.Init()
+// 	must(err)
+// 	defer termbox.Close()
+
+// 	user, err := user.Current()
+// 	must(err)
+// 	home := user.HomeDir
+// 	appDir := filepath.Join(home, ".trk")
+// 	err = os.MkdirAll(appDir, 0700)
+// 	must(err)
+// 	tmpFilePath := filepath.Join(appDir, "tmp.trk")
+
+// 	seq, err = readFile(tmpFilePath)
+// 	if err != nil {
+// 		seq = []string{newRow()}
+// 	}
+
+// 	digitakt, _ = ConnectDevice("Elektron Digitakt", "Elektron Digitakt")
+// 	digitone, _ = ConnectDevice("Elektron Digitone", "Elektron Digitone")
+
+// 	var (
+// 		quit       = make(chan struct{})
+// 		transportC = make(chan realtime.Message)
+// 	)
+// 	defer close(quit)
+// 	if digitakt != nil {
+// 		defer digitakt.Close()
+// 		go listenTransport(digitakt, transportC, quit)
+// 	}
+// 	if digitone != nil {
+// 		defer digitone.Close()
+// 	}
+
+// 	go func() {
+// 		var (
+// 			tick    int
+// 			playing bool
+// 		)
+// 		for {
+// 			select {
+// 			case m := <-transportC:
+// 				switch m {
+// 				case realtime.TimingClock:
+// 					if playing {
+// 						tick++
+// 						SetString(30, 0, fmt.Sprintf("%d of %d            ", tick/6, getRowLen()), termbox.ColorDefault, termbox.ColorDefault)
+// 						termbox.Flush()
+// 						if tick == getRowLen()*6-12 {
+// 							if cur.Row+1 < len(seq) {
+// 								Row(seq[cur.Row+1]).Play(digitakt, digitone)
+// 							}
+// 						} else if tick == getRowLen()*6 {
+// 							if cur.Row+1 < len(seq) {
+// 								cur.Row++
+// 								render()
+// 							}
+// 							tick = 0
+// 						}
+// 					}
+// 				case realtime.Start:
+// 					playing = true
+// 					tick = 0
+// 				case realtime.Continue:
+// 					playing = true
+// 				case realtime.Stop:
+// 					playing = false
+// 				}
+// 			case <-quit:
+// 				return
+// 			}
+// 		}
+// 	}()
+
+// 	var done bool
+// 	for !done {
+// 		e := termbox.PollEvent()
+// 		switch e.Type {
+// 		case termbox.EventKey:
+// 			switch e.Key {
+// 			case termbox.KeyEsc:
+// 				done = true
+
+// 			case termbox.KeyArrowUp:
+// 				if editing {
+// 					getCell(cur).Inc()
+// 				} else {
+// 					cur.Row--
+// 				}
+// 			case termbox.KeyPgup:
+// 				if editing {
+// 					getCell(cur).LargeInc()
+// 				} else {
+// 					cur.Row -= 16
+// 				}
+// 			case termbox.KeyHome:
+// 				if !editing {
+// 					cur.Row = 0
+// 				}
+// 			case termbox.KeyArrowDown:
+// 				if editing {
+// 					getCell(cur).Dec()
+// 				} else {
+// 					cur.Row++
+// 				}
+// 			case termbox.KeyPgdn:
+// 				if editing {
+// 					getCell(cur).LargeDec()
+// 				} else {
+// 					cur.Row += 16
+// 				}
+// 			case termbox.KeyEnd:
+// 				if !editing {
+// 					cur.Row = len(seq)
+// 				}
+
+// 			case termbox.KeyArrowLeft:
+// 				if editing {
+// 					cur.Cell--
+// 				}
+// 			case termbox.KeyArrowRight:
+// 				if editing {
+// 					cur.Cell++
+// 				}
+
+// 			case termbox.KeyEnter:
+// 				editing = !editing
+// 			case termbox.KeyBackspace, termbox.KeyDelete:
+// 				if editing {
+// 					getCell(cur).Clear()
+// 				} else {
+// 					seq = append(seq[:cur.Row], seq[cur.Row+1:]...)
+// 					if len(seq) == 0 {
+// 						seq = append(seq, newRow())
+// 					}
+// 				}
+// 			case termbox.KeyInsert:
+// 				seq = append(seq[:cur.Row+1], append([]string{newRow()}, seq[cur.Row+1:]...)...)
+// 				cur.Row++
+// 				editing = true
+// 			}
+// 		}
+// 		cur.Row = clamp(cur.Row, 0, len(seq)-1)
+// 		cur.Cell = clamp(cur.Cell, 0, 14)
+// 		render()
+// 		if editing {
+// 			writeFile(tmpFilePath)
+// 		}
+// 		Row(seq[cur.Row]).Play(digitakt, digitone)
+// 	}
+// }
+
+// func render() {
+// 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+// 	for i := 0; i < 16; i++ {
+// 		row := cur.Row - 8 + i
+// 		if row < 0 || len(seq) <= row {
+// 			continue
+// 		}
+// 		fg, bg := termbox.ColorBlue, termbox.ColorDefault
+// 		if i == 8 && !editing {
+// 			fg = fg | termbox.AttrReverse
+// 		}
+// 		line := seq[row]
+// 		SetString(0, i, fmt.Sprintf("%3d %s", 1+row, line), fg, bg)
+// 		if i == 8 {
+// 			cell := getCell(cur)
+// 			SetString(4+cell.Range().Index, i, cell.Range().Substr(line), fg|termbox.AttrReverse, bg)
+// 		}
+// 	}
+// 	termbox.Flush()
+// }
+
+// func newRow() string {
+// 	return "A01 12345678 A01 1234   16"
+// }
+
+// func getCell(c Location) Cell {
+// 	line := &seq[c.Row]
+// 	switch c.Cell {
+// 	case 0:
+// 		return NewPatternCell(line, 0, 3)
+// 	case 1, 2, 3, 4, 5, 6, 7, 8:
+// 		return NewMuteCell(line, 4+c.Cell-1, 1)
+// 	case 9:
+// 		return NewPatternCell(line, 13, 3)
+// 	case 10, 11, 12, 13:
+// 		return NewMuteCell(line, 17+c.Cell-10, 1)
+// 	case 14:
+// 		return NewLenCell(line, 22, 4)
+// 	}
+// 	return nil
+// }
+
+// func getRowLen() int {
+// 	return Row(seq[cur.Row]).Len()
+// }
+
+// type Row string
+
+// func (r Row) Play(digitakt, digitone *Device) {
+// 	if digitakt != nil {
+// 		r.Digitakt().Play(digitakt)
+// 	}
+// 	if digitone != nil {
+// 		r.Digitone().Play(digitone)
+// 	}
+// }
+
+// func (r Row) Len() int {
+// 	val, _ := strconv.Atoi(strings.TrimSpace(Range{22, 4}.Substr(string(r))))
+// 	return val
+// }
+
+// func (r Row) Digitakt() Part {
+// 	return Part(string(r)[0:12])
+// }
+
+// func (r Row) Digitone() Part {
+// 	return Part(string(r)[13:21])
+// }
+
+// func (r Row) String() string {
+// 	return string(r)
+// }
+
+// type Part string
+
+// func (p Part) Play(out *Device) {
+// 	if p, ok := p.Pattern(); ok {
+// 		out.Write(channel.Channel9.ProgramChange(uint8(p)))
+// 	}
+// 	p.Mute().Play(out)
+// }
+
+// func (p Part) Pattern() (int, bool) {
+// 	if strings.ContainsAny(string(p)[0:3], ".") {
+// 		return 0, false
+// 	}
+// 	bank := string(p)[0]
+// 	trig, _ := strconv.Atoi(string(p)[1:3])
+// 	return int(bank-'A')*16 + trig - 1, true
+// }
+
+// func (p Part) Mute() Mute {
+// 	return Mute(string(p[4:]))
+// }
+
+// type Mute string
+
+// func (m Mute) Play(out *Device) {
+// 	c := m.ChannelCount()
+// 	for n := 0; n < c; n++ {
+// 		var val uint8
+// 		switch string(m)[n] {
+// 		case '.':
+// 			continue
+// 		case '+':
+// 			val = 0
+// 		case '-':
+// 			val = 1
+// 		}
+// 		out.Write(channel.Channel(n).ControlChange(94, val))
+// 	}
+// }
+
+// func (m Mute) Channel(n int) (bool, bool) {
+// 	return string(m)[n] == '-', string(m)[n] != '.'
+// }
+
+// func (m Mute) ChannelCount() int {
+// 	return len(m)
+// }
+
+// func snap(val, grid int) int {
+// 	return (val / grid) * grid
+// }
+
+// type Location struct {
+// 	Row, Cell int
+// }
+
+// func writeFile(path string) error {
+// 	f, err := os.Create(path)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer f.Close()
+// 	for _, line := range seq {
+// 		_, err := fmt.Fprintln(f, line)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return f.Close()
+// }
+
+// func readFile(path string) ([]string, error) {
+// 	f, err := os.Open(path)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer f.Close()
+// 	var seq []string
+// 	scanner := bufio.NewScanner(f)
+// 	for scanner.Scan() {
+// 		line := strings.TrimSpace(scanner.Text())
+// 		if line != "" {
+// 			seq = append(seq, line)
+// 		}
+// 	}
+// 	if err := scanner.Err(); err != nil {
+// 		return nil, err
+// 	}
+// 	return seq, f.Close()
+// }
+
+// func listenTransport(synth *Device, transportC chan<- realtime.Message, quit <-chan struct{}) {
+// 	for {
+// 		select {
+// 		case m := <-synth.In():
+// 			if m, ok := m.(realtime.Message); ok {
+// 				transportC <- m
+// 			}
+
+// 		case <-quit:
+// 			return
+// 		}
+// 	}
+// }
 
 // var (
 // 	currentStep        = 0
