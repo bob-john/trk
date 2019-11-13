@@ -4,11 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
-	"unicode"
-
-	"github.com/nsf/termbox-go"
 )
 
 type Arrangement struct {
@@ -126,7 +122,7 @@ func (p Part) Mute() Cell {
 }
 
 type Cell interface {
-	Input([]termbox.Event)
+	Edit() CellEditor
 	String() string
 }
 
@@ -135,7 +131,9 @@ type indexCell struct {
 	row, col int
 }
 
-func (c indexCell) Input(events []termbox.Event) {}
+func (c indexCell) Edit() CellEditor {
+	return &indexCellEditor{&c}
+}
 
 func (c indexCell) String() string {
 	return fmt.Sprintf("%3d", 1+c.row)
@@ -146,7 +144,9 @@ type patternCell struct {
 	row, col int
 }
 
-func (c patternCell) Input(events []termbox.Event) {}
+func (c patternCell) Edit() CellEditor {
+	return newPatternCellEditor(&c)
+}
 
 func (c patternCell) String() string {
 	return c.Get(c.row, c.col)
@@ -158,26 +158,8 @@ type muteCell struct {
 	len      int
 }
 
-func (c muteCell) Input(events []termbox.Event) {
-	muted := make([]bool, c.len)
-	for _, e := range events {
-		if !isKeyDigit(e) {
-			continue
-		}
-		n := int(e.Ch - '1')
-		if n >= 0 && n < c.len {
-			muted[n] = !muted[n]
-		}
-	}
-	var val string
-	for n, m := range muted {
-		if m {
-			val += "-"
-		} else {
-			val += strconv.Itoa(1 + n)
-		}
-	}
-	c.Set(c.row, c.col, val)
+func (c muteCell) Edit() CellEditor {
+	return newMuteCellEditor(&c)
 }
 
 func (c muteCell) String() string {
@@ -189,24 +171,10 @@ type lenCell struct {
 	row, col int
 }
 
-func (c lenCell) Input(events []termbox.Event) {}
+func (c lenCell) Edit() CellEditor {
+	return newLenCellEditor(&c)
+}
 
 func (c lenCell) String() string {
 	return c.Get(c.row, c.col)
-}
-
-func isKeyDelete(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && e.Key == termbox.KeyDelete
-}
-
-func isKeyDigit(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && unicode.IsDigit(e.Ch)
-}
-
-func isKeyLetter(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && unicode.IsLetter(e.Ch)
-}
-
-func isKeyEnter(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && e.Key == termbox.KeyEnter
 }
