@@ -1,7 +1,5 @@
 package main
 
-import "fmt"
-
 type Synth struct {
 	pattern    map[int]Pattern
 	muted      map[mutedKey]bool
@@ -62,30 +60,4 @@ func (t *Synth) Muted(step, voice int) (muted bool, change bool) {
 
 type mutedKey struct {
 	step, voice int
-}
-
-type Pattern int
-
-func MakePattern(bank, trig int) Pattern {
-	return Pattern(bank*16 + trig)
-}
-
-func (p Pattern) String() string {
-	return fmt.Sprintf("%s%02d", string('A'+int(p)/16), 1+int(p)%16)
-}
-
-func (p Pattern) Bank() int {
-	return int(p) / 16
-}
-
-func (p Pattern) Trig() int {
-	return int(p) % 16
-}
-
-func (p Pattern) SetBank(bank int) Pattern {
-	return MakePattern(bank, p.Trig())
-}
-
-func (p Pattern) SetTrig(trig int) Pattern {
-	return MakePattern(p.Bank(), trig)
 }

@@ -52,6 +52,8 @@ func (p *Pen) Handle(e termbox.Event) {
 		case termbox.KeyArrowRight:
 			p.col++
 
+			// TODO Cancel edit (ESC)
+
 		default:
 			if p.editor == nil {
 				p.editor = p.Cell().Edit()
@@ -89,20 +91,66 @@ func (c *indexCellEditor) Commit()               {}
 
 type patternCellEditor struct {
 	*patternCell
+	buffer string
 }
 
 func newPatternCellEditor(c *patternCell) CellEditor {
-	return &patternCellEditor{c}
+	return &patternCellEditor{c, ""}
 }
 
 func (c *patternCellEditor) Input(e termbox.Event) {
+	if e.Type != termbox.EventKey {
+		return
+	}
+	switch e.Key {
+	case termbox.KeyDelete, termbox.KeyBackspace, termbox.KeyBackspace2:
+		c.buffer = "..."
 
+	// case termbox.KeyBackspace, termbox.KeyBackspace2:
+	// 	if len(c.buffer) == 0 {
+	// 		return
+	// 	}
+	// 	c.buffer = c.buffer[0 : len(c.buffer)-1]
+
+	default:
+		switch len(c.buffer) {
+		case 0:
+			ch := unicode.ToUpper(e.Ch)
+			if ch < 'A' || ch > 'H' {
+				return
+			}
+			c.buffer += string(ch)
+
+		case 1:
+			if e.Ch < '0' || e.Ch > '1' {
+				return
+			}
+			c.buffer += string(e.Ch)
+
+		case 2:
+			if c.buffer[1] == '0' && (e.Ch < '1' || e.Ch > '9') {
+				return
+			}
+			if c.buffer[1] == '1' && (e.Ch < '0' || e.Ch > '6') {
+				return
+			}
+			c.buffer += string(e.Ch)
+
+		default:
+			return
+		}
+	}
+	c.Set(c.row, c.col, pad(c.buffer, ' ', 3))
 }
 
-//TODO Clear()
+func (c *patternCellEditor) Reset() {}
 
-func (c *patternCellEditor) Reset()  {}
-func (c *patternCellEditor) Commit() {}
+func (c *patternCellEditor) Commit() {
+	p, ok := ParsePattern(c.buffer)
+	if ok {
+		c.Set(c.row, c.col, p.String())
+	}
+}
 
 type muteCellEditor struct {
 	*muteCell
@@ -140,7 +188,6 @@ func (c *muteCellEditor) Input(e termbox.Event) {
 	c.Set(c.row, c.col, val)
 }
 
-// func (c *muteCellEditor) Clear()  {}
 func (c *muteCellEditor) Reset()  {}
 func (c *muteCellEditor) Commit() {}
 
