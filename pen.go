@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/nsf/termbox-go"
@@ -59,6 +60,13 @@ func (p *Pen) Handle(e termbox.Event) {
 			p.editor.Input(e)
 		}
 	}
+	if p.col < 0 && p.row > 0 {
+		p.row--
+		p.col = p.arr.Row(p.row).CellCount() - 1
+	} else if p.col >= p.arr.Row(p.row).CellCount() && p.row < p.arr.RowCount()-1 {
+		p.row++
+		p.col = 0
+	}
 	p.row = clamp(p.row, 0, p.arr.RowCount()-1)
 	p.col = clamp(p.col, 0, p.arr.Row(p.row).CellCount()-1)
 	if p.row != oldRow || p.col != oldCol {
@@ -106,38 +114,23 @@ func (c *patternCellEditor) Input(e termbox.Event) {
 		c.buffer = c.old
 
 	default:
-		switch len(c.buffer) {
-		case 0:
+		var ok bool
+		if len(c.buffer) == 0 {
 			ch := unicode.ToUpper(e.Ch)
-			if ch < 'A' || ch > 'H' {
-				return
-			}
-			c.buffer += string(ch)
-
-		case 1:
-			if e.Ch < '0' || e.Ch > '1' {
-				return
-			}
-			c.buffer += string(e.Ch)
-
-		case 2:
-			if c.buffer[1] == '0' && (e.Ch < '1' || e.Ch > '9') {
-				return
-			}
-			if c.buffer[1] == '1' && (e.Ch < '0' || e.Ch > '6') {
-				return
-			}
-			c.buffer += string(e.Ch)
-
-		default:
+			ok = ch >= 'A' && ch <= 'H'
+		} else {
+			_, ok = ParsePattern(c.buffer + string(e.Ch))
+		}
+		if !ok {
 			return
 		}
+		c.buffer += string(e.Ch)
 	}
 	c.Set(c.row, c.col, pad(c.buffer, ' ', 3))
 }
 
 func (c *patternCellEditor) Commit() {
-	p, ok := ParsePattern(c.String())
+	p, ok := ParsePattern(c.buffer)
 	if ok {
 		c.Set(c.row, c.col, p.String())
 	}
@@ -145,65 +138,79 @@ func (c *patternCellEditor) Commit() {
 
 type muteCellEditor struct {
 	*muteCell
-	unmuted []bool
+	mute Mute
 }
 
 func newMuteCellEditor(c *muteCell) CellEditor {
-	u := make([]bool, c.len)
-	for _, ch := range c.String() {
-		n := int(ch - '1')
-		if n >= 0 && n < len(u) {
-			u[n] = true
-		}
-	}
-	return &muteCellEditor{c, u}
+	return &muteCellEditor{c, ParseMute(c.String(), c.channelCount)}
 }
 
 func (c *muteCellEditor) Input(e termbox.Event) {
+	if isKeyDelete(e) {
+		c.mute.Clear()
+		c.Set(c.row, c.col, strings.Repeat(".", len(c.mute)))
+		return
+	}
+	if e.Type == termbox.EventKey && e.Ch == '-' {
+		c.mute.Clear()
+		c.Set(c.row, c.col, c.mute.String())
+		return
+	}
 	if !isKeyDigit(e) {
 		return
 	}
-	n := int(e.Ch - '1')
-	if n < 0 || n >= len(c.unmuted) {
+	n := int(e.Ch) - '1'
+	if n < 0 || n >= len(c.mute) {
 		return
 	}
-	c.unmuted[n] = !c.unmuted[n]
-	var val string
-	for n, u := range c.unmuted {
-		if u {
-			val += strconv.Itoa(1 + n)
-		} else {
-			val += "-"
-		}
-	}
-	c.Set(c.row, c.col, val)
+	c.mute[n] = !c.mute[n]
+	c.Set(c.row, c.col, c.mute.String())
 }
 
 func (c *muteCellEditor) Commit() {}
 
 type lenCellEditor struct {
 	*lenCell
+	buffer string
 }
 
 func newLenCellEditor(c *lenCell) CellEditor {
-	return &lenCellEditor{c}
+	return &lenCellEditor{c, ""}
 }
 
-func (c *lenCellEditor) Input(e termbox.Event) {}
-func (c *lenCellEditor) Commit()               {}
-
-func isKeyDelete(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && e.Key == termbox.KeyDelete
+func (c *lenCellEditor) Input(e termbox.Event) {
+	if !isKeyDigit(e) {
+		return
+	}
+	n, err := strconv.Atoi(c.buffer + string(e.Ch))
+	if err != nil || n > 1024 {
+		return
+	}
+	c.buffer += string(e.Ch)
+	c.Set(c.row, c.col, c.buffer)
 }
 
-func isKeyDigit(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && unicode.IsDigit(e.Ch)
+func (c *lenCellEditor) Commit() {
+	if c.buffer == "" {
+		return
+	}
+	n, _ := strconv.Atoi(c.buffer)
+	n = clamp(n, 1, 1024)
+	c.Set(c.row, c.col, strconv.Itoa(n))
 }
 
 func isKeyLetter(e termbox.Event) bool {
 	return e.Type == termbox.EventKey && unicode.IsLetter(e.Ch)
 }
 
-func isKeyEnter(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && e.Key == termbox.KeyEnter
+func isKeyDigit(e termbox.Event) bool {
+	return e.Type == termbox.EventKey && unicode.IsDigit(e.Ch)
+}
+
+func isKeyDelete(e termbox.Event) bool {
+	return e.Type == termbox.EventKey && e.Key == termbox.KeyDelete
+}
+
+func isKeyBackspace(e termbox.Event) bool {
+	return e.Type == termbox.EventKey && e.Key == termbox.KeyBackspace
 }

@@ -154,8 +154,8 @@ func (c patternCell) String() string {
 
 type muteCell struct {
 	*Arrangement
-	row, col int
-	len      int
+	row, col     int
+	channelCount int
 }
 
 func (c muteCell) Edit() CellEditor {
