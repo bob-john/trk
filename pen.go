@@ -12,10 +12,12 @@ type Pen struct {
 	arr      *Arrangement
 	row, col int
 	editor   CellEditor
+	undo     string
 }
 
 func NewPen(arr *Arrangement) *Pen {
-	return &Pen{arr: arr}
+	c := arr.Cell(0, 0)
+	return &Pen{arr: arr, editor: c.Edit(), undo: c.String()}
 }
 
 func (p *Pen) Row() int {
@@ -53,10 +55,13 @@ func (p *Pen) Handle(e termbox.Event) {
 		case termbox.KeyArrowRight:
 			p.col++
 
-		default:
-			if p.editor == nil {
+		case termbox.KeyEsc:
+			if p.col > 0 {
+				p.arr.Set(p.row, p.col-1, p.undo)
 				p.editor = p.Cell().Edit()
 			}
+
+		default:
 			p.editor.Input(e)
 		}
 	}
@@ -70,10 +75,9 @@ func (p *Pen) Handle(e termbox.Event) {
 	p.row = clamp(p.row, 0, p.arr.RowCount()-1)
 	p.col = clamp(p.col, 0, p.arr.Row(p.row).CellCount()-1)
 	if p.row != oldRow || p.col != oldCol {
-		if p.editor != nil {
-			p.editor.Commit()
-		}
+		p.editor.Commit()
 		p.editor = p.Cell().Edit()
+		p.undo = p.Cell().String()
 	}
 }
 
@@ -95,25 +99,20 @@ func (c *indexCellEditor) Commit()               {}
 
 type patternCellEditor struct {
 	*patternCell
-	old, buffer string
+	buffer string
 }
 
 func newPatternCellEditor(c *patternCell) CellEditor {
-	return &patternCellEditor{c, c.String(), ""}
+	return &patternCellEditor{c, ""}
 }
 
 func (c *patternCellEditor) Input(e termbox.Event) {
 	if e.Type != termbox.EventKey {
 		return
 	}
-	switch e.Key {
-	case termbox.KeyDelete:
+	if e.Key == termbox.KeyDelete {
 		c.buffer = "..."
-
-	case termbox.KeyEsc:
-		c.buffer = c.old
-
-	default:
+	} else {
 		var ok bool
 		if len(c.buffer) == 0 {
 			ch := unicode.ToUpper(e.Ch)
