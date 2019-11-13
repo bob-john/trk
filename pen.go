@@ -52,8 +52,6 @@ func (p *Pen) Handle(e termbox.Event) {
 		case termbox.KeyArrowRight:
 			p.col++
 
-			// TODO Cancel edit (ESC)
-
 		default:
 			if p.editor == nil {
 				p.editor = p.Cell().Edit()
@@ -73,7 +71,6 @@ func (p *Pen) Handle(e termbox.Event) {
 
 type CellEditor interface {
 	Input(termbox.Event)
-	Reset()
 	Commit()
 }
 
@@ -86,16 +83,15 @@ func newIndexCellEditor(c *indexCell) CellEditor {
 }
 
 func (c *indexCellEditor) Input(e termbox.Event) {}
-func (c *indexCellEditor) Reset()                {}
 func (c *indexCellEditor) Commit()               {}
 
 type patternCellEditor struct {
 	*patternCell
-	buffer string
+	old, buffer string
 }
 
 func newPatternCellEditor(c *patternCell) CellEditor {
-	return &patternCellEditor{c, ""}
+	return &patternCellEditor{c, c.String(), ""}
 }
 
 func (c *patternCellEditor) Input(e termbox.Event) {
@@ -103,14 +99,11 @@ func (c *patternCellEditor) Input(e termbox.Event) {
 		return
 	}
 	switch e.Key {
-	case termbox.KeyDelete, termbox.KeyBackspace, termbox.KeyBackspace2:
+	case termbox.KeyDelete:
 		c.buffer = "..."
 
-	// case termbox.KeyBackspace, termbox.KeyBackspace2:
-	// 	if len(c.buffer) == 0 {
-	// 		return
-	// 	}
-	// 	c.buffer = c.buffer[0 : len(c.buffer)-1]
+	case termbox.KeyEsc:
+		c.buffer = c.old
 
 	default:
 		switch len(c.buffer) {
@@ -143,10 +136,8 @@ func (c *patternCellEditor) Input(e termbox.Event) {
 	c.Set(c.row, c.col, pad(c.buffer, ' ', 3))
 }
 
-func (c *patternCellEditor) Reset() {}
-
 func (c *patternCellEditor) Commit() {
-	p, ok := ParsePattern(c.buffer)
+	p, ok := ParsePattern(c.String())
 	if ok {
 		c.Set(c.row, c.col, p.String())
 	}
@@ -188,7 +179,6 @@ func (c *muteCellEditor) Input(e termbox.Event) {
 	c.Set(c.row, c.col, val)
 }
 
-func (c *muteCellEditor) Reset()  {}
 func (c *muteCellEditor) Commit() {}
 
 type lenCellEditor struct {
@@ -200,7 +190,6 @@ func newLenCellEditor(c *lenCell) CellEditor {
 }
 
 func (c *lenCellEditor) Input(e termbox.Event) {}
-func (c *lenCellEditor) Reset()                {}
 func (c *lenCellEditor) Commit()               {}
 
 func isKeyDelete(e termbox.Event) bool {

@@ -42,7 +42,7 @@ func main() {
 		switch e.Type {
 		case termbox.EventKey:
 			switch e.Key {
-			case termbox.KeyEsc:
+			case termbox.KeyCtrlX, termbox.KeyCtrlQ:
 				done = true
 			}
 		}
