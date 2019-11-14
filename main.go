@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/gomidi/midi"
+	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
 
@@ -13,8 +16,12 @@ const (
 )
 
 var (
-	doc *Arrangement
-	pen *Pen
+	doc      *Arrangement
+	pen      *Pen
+	digitakt *Device
+	digitone *Device
+	playing  bool
+	head     int
 )
 
 func main() {
@@ -27,7 +34,11 @@ func main() {
 	}
 
 	doc, err = LoadArrangement(os.Args[1])
-	must(err)
+	if os.IsNotExist(err) {
+		doc = NewArrangement()
+	} else if err != nil {
+		must(err)
+	}
 
 	pen = NewPen(doc)
 
@@ -35,20 +46,78 @@ func main() {
 	must(err)
 	defer termbox.Close()
 
-	var done bool
-	for !done {
-		e := termbox.PollEvent()
-		switch e.Type {
-		case termbox.EventKey:
-			switch e.Key {
-			case termbox.KeyCtrlS, termbox.KeyCtrlX:
-				doc.WriteFile(os.Args[1])
-				done = e.Key == termbox.KeyCtrlX
+	digitakt, _ = OpenDevice("Elektron Digitakt", "Elektron Digitakt")
+	digitone, _ = OpenDevice("Elektron Digitone", "Elektron Digitone")
+
+	var (
+		eventC = make(chan termbox.Event)
+		midiC  <-chan midi.Message
+	)
+
+	if digitakt != nil {
+		midiC = digitakt.In()
+	} else if digitone != nil {
+		midiC = digitone.In()
+	}
+
+	go func() {
+		for {
+			e := termbox.PollEvent()
+			if e.Type == termbox.EventInterrupt {
+				break
 			}
+			eventC <- e
 		}
-		pen.Handle(e)
+	}()
+
+	var (
+		done bool
+		tick int
+	)
+	for !done {
+		select {
+		case e := <-eventC:
+			switch e.Type {
+			case termbox.EventKey:
+				switch e.Key {
+				case termbox.KeyCtrlS, termbox.KeyCtrlX:
+					doc.WriteFile(os.Args[1])
+					done = e.Key == termbox.KeyCtrlX
+				}
+			}
+			if !playing {
+				pen.Handle(e)
+			}
+
+		case m := <-midiC:
+			switch m {
+			case realtime.TimingClock:
+				if playing {
+					tick++
+				}
+			case realtime.Start:
+				playing = true
+				tick = 0
+				head = 0
+			case realtime.Continue:
+				playing = true
+			case realtime.Stop:
+				playing = false
+			}
+			//TODO Check event on stop and double stop
+			// if m != realtime.TimingClock {
+			// 	fmt.Println(m)
+			// }
+		}
+		rowLen, _ := strconv.Atoi(doc.Row(head).Len().String())
+		if tick == rowLen*6 {
+			head++
+			tick = 0
+		}
+		head = clamp(head, 0, doc.RowCount()-1)
 		render()
 	}
+	termbox.Interrupt()
 }
 
 func clamp(val, min, max int) int {
@@ -70,6 +139,8 @@ func min(a, b int) int {
 
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+	SetString(30, 0, fmt.Sprintf("Digitakt: %v", digitakt != nil), termbox.ColorDefault, termbox.ColorDefault)
+	SetString(30, 1, fmt.Sprintf("Digitone: %v", digitone != nil), termbox.ColorDefault, termbox.ColorDefault)
 	for i := 0; i < pageSize; i++ {
 		r := pen.Row() - 8 + i
 		if r < 0 || r >= doc.RowCount() {
@@ -77,11 +148,14 @@ func render() {
 		}
 		line := doc.Row(r).String()
 		fg := termbox.ColorBlue
-		if i == 8 && !pen.Editing() {
+		if !playing && i == 8 && !pen.Editing() {
 			fg = fg | termbox.AttrReverse
 		}
+		if playing && r == head {
+			fg = termbox.ColorYellow | termbox.AttrReverse
+		}
 		SetString(0, i, line, fg, termbox.ColorDefault)
-		if i == 8 && pen.Editing() {
+		if !playing && i == 8 && pen.Editing() {
 			SetString(pen.Range().Index, i, pen.Cell().String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
 		}
 	}
@@ -96,20 +170,20 @@ func pad(str string, ch rune, total int) string {
 	return str + strings.Repeat(string(ch), count)
 }
 
-func colWidth(header string) int {
-	switch strings.ToUpper(header) {
-	case "LEN":
-		return 4
-	case "DT.P", "DN.P", "P.DT", "P.DN":
-		return 4 // 3
-	case "DT.M", "M.DT":
-		return 8
-	case "DN.M", "M.DN":
-		return 4
-	default:
-		return len(header)
-	}
-}
+// func colWidth(header string) int {
+// 	switch strings.ToUpper(header) {
+// 	case "LEN":
+// 		return 4
+// 	case "DT.P", "DN.P", "P.DT", "P.DN":
+// 		return 4 // 3
+// 	case "DT.M", "M.DT":
+// 		return 8
+// 	case "DN.M", "M.DN":
+// 		return 4
+// 	default:
+// 		return len(header)
+// 	}
+// }
 
 // var (
 // 	seq     = []string{}
@@ -137,8 +211,8 @@ func colWidth(header string) int {
 // 		seq = []string{newRow()}
 // 	}
 
-// 	digitakt, _ = ConnectDevice("Elektron Digitakt", "Elektron Digitakt")
-// 	digitone, _ = ConnectDevice("Elektron Digitone", "Elektron Digitone")
+// 	digitakt, _ = OpenDevice("Elektron Digitakt", "Elektron Digitakt")
+// 	digitone, _ = OpenDevice("Elektron Digitone", "Elektron Digitone")
 
 // 	var (
 // 		quit       = make(chan struct{})
@@ -474,8 +548,8 @@ func colWidth(header string) int {
 
 // 	seq.ReadFile(tmpFilePath)
 
-// 	digitakt, _ = ConnectDevice("Elektron Digitakt", "Elektron Digitakt")
-// 	digitone, _ = ConnectDevice("Elektron Digitone", "Elektron Digitone")
+// 	digitakt, _ = OpenDevice("Elektron Digitakt", "Elektron Digitakt")
+// 	digitone, _ = OpenDevice("Elektron Digitone", "Elektron Digitone")
 
 // 	var (
 // 		quit       = make(chan struct{})

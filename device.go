@@ -14,7 +14,7 @@ type Device struct {
 	*Output
 }
 
-func ConnectDevice(inputName, outputName string) (*Device, error) {
+func OpenDevice(inputName, outputName string) (*Device, error) {
 	in, err := OpenInput(inputName)
 	if err != nil {
 		return nil, err

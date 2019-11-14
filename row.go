@@ -55,7 +55,7 @@ func (r Row) Digitone() Part {
 }
 
 func (r Row) Len() Cell {
-	return r.Cell(5)
+	return r.Cell(4)
 }
 
 func (r Row) String() string {

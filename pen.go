@@ -76,11 +76,7 @@ func (p *Pen) Handle(e termbox.Event) {
 			}
 
 		case termbox.KeyInsert:
-			if p.editor != nil {
-				p.editor.Input(e)
-			} else {
-				p.doc.InsertAfter(p.row)
-			}
+			p.doc.InsertAfter(p.row)
 		case termbox.KeyDelete:
 			if p.editor != nil {
 				p.editor.Input(e)
