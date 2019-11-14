@@ -1,5 +1,11 @@
 package main
 
+import (
+	"strings"
+
+	"github.com/nsf/termbox-go"
+)
+
 type Mute []bool
 
 func ParseMute(str string, channelCount int) Mute {
@@ -34,3 +40,49 @@ func (m Mute) Clear() {
 		m[n] = true
 	}
 }
+
+type muteCell struct {
+	stringCell
+	channelCount int
+}
+
+func newMuteCell(doc *Arrangement, row, col, channelCount int) Cell {
+	return muteCell{stringCell{doc, row, col}, channelCount}
+}
+
+func (c muteCell) Edit() CellEditor {
+	return newMuteCellEditor(&c)
+}
+
+type muteCellEditor struct {
+	*muteCell
+	mute Mute
+}
+
+func newMuteCellEditor(c *muteCell) CellEditor {
+	return &muteCellEditor{c, ParseMute(c.String(), c.channelCount)}
+}
+
+func (c *muteCellEditor) Input(e termbox.Event) {
+	if isKeyDelete(e) {
+		c.mute.Clear()
+		c.Set(strings.Repeat(".", len(c.mute)))
+		return
+	}
+	if e.Type == termbox.EventKey && e.Ch == '-' {
+		c.mute.Clear()
+		c.Set(c.mute.String())
+		return
+	}
+	if !isKeyDigit(e) {
+		return
+	}
+	n := int(e.Ch) - '1'
+	if n < 0 || n >= len(c.mute) {
+		return
+	}
+	c.mute[n] = !c.mute[n]
+	c.Set(c.mute.String())
+}
+
+func (c *muteCellEditor) Commit() {}

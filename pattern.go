@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
+
+	"github.com/nsf/termbox-go"
 )
 
 type Pattern int
@@ -46,4 +49,54 @@ func (p Pattern) SetBank(bank int) Pattern {
 
 func (p Pattern) SetTrig(trig int) Pattern {
 	return MakePattern(p.Bank(), trig)
+}
+
+type patternCell struct {
+	stringCell
+}
+
+func newPatternCell(doc *Arrangement, row, col int) Cell {
+	return patternCell{stringCell{doc, row, col}}
+}
+
+func (c patternCell) Edit() CellEditor {
+	return newPatternCellEditor(&c)
+}
+
+type patternCellEditor struct {
+	*patternCell
+	buffer string
+}
+
+func newPatternCellEditor(c *patternCell) CellEditor {
+	return &patternCellEditor{c, ""}
+}
+
+func (c *patternCellEditor) Input(e termbox.Event) {
+	if e.Type != termbox.EventKey {
+		return
+	}
+	if e.Key == termbox.KeyDelete {
+		c.buffer = "..."
+	} else {
+		var ok bool
+		if len(c.buffer) == 0 {
+			ch := unicode.ToUpper(e.Ch)
+			ok = ch >= 'A' && ch <= 'H'
+		} else {
+			_, ok = ParsePattern(c.buffer + string(e.Ch))
+		}
+		if !ok {
+			return
+		}
+		c.buffer += string(e.Ch)
+	}
+	c.Set(pad(c.buffer, ' ', 3))
+}
+
+func (c *patternCellEditor) Commit() {
+	p, ok := ParsePattern(c.buffer)
+	if ok {
+		c.Set(p.String())
+	}
 }

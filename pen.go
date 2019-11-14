@@ -1,23 +1,21 @@
 package main
 
 import (
-	"strconv"
-	"strings"
 	"unicode"
 
 	"github.com/nsf/termbox-go"
 )
 
 type Pen struct {
-	arr      *Arrangement
+	doc      *Arrangement
 	row, col int
 	editor   CellEditor
 	undo     string
 }
 
-func NewPen(arr *Arrangement) *Pen {
-	c := arr.Cell(0, 0)
-	return &Pen{arr: arr, editor: c.Edit(), undo: c.String()}
+func NewPen(doc *Arrangement) *Pen {
+	c := doc.Cell(0, 0)
+	return &Pen{doc: doc, editor: c.Edit(), undo: c.String()}
 }
 
 func (p *Pen) Row() int {
@@ -25,11 +23,11 @@ func (p *Pen) Row() int {
 }
 
 func (p *Pen) Cell() Cell {
-	return p.arr.Cell(p.row, p.col)
+	return p.doc.Cell(p.row, p.col)
 }
 
 func (p *Pen) Range() Range {
-	return p.arr.Row(p.row).Range(p.col)
+	return p.doc.Row(p.row).Range(p.col)
 }
 
 func (p *Pen) Handle(e termbox.Event) {
@@ -48,7 +46,7 @@ func (p *Pen) Handle(e termbox.Event) {
 		case termbox.KeyPgdn:
 			p.row += pageSize
 		case termbox.KeyEnd:
-			p.row = p.arr.RowCount() - 1
+			p.row = p.doc.RowCount() - 1
 
 		case termbox.KeyArrowLeft:
 			p.col--
@@ -57,7 +55,7 @@ func (p *Pen) Handle(e termbox.Event) {
 
 		case termbox.KeyEsc:
 			if p.col > 0 {
-				p.arr.Set(p.row, p.col-1, p.undo)
+				p.Cell().Set(p.undo)
 				p.editor = p.Cell().Edit()
 			}
 
@@ -67,13 +65,13 @@ func (p *Pen) Handle(e termbox.Event) {
 	}
 	if p.col < 0 && p.row > 0 {
 		p.row--
-		p.col = p.arr.Row(p.row).CellCount() - 1
-	} else if p.col >= p.arr.Row(p.row).CellCount() && p.row < p.arr.RowCount()-1 {
+		p.col = p.doc.Row(p.row).CellCount() - 1
+	} else if p.col >= p.doc.Row(p.row).CellCount() && p.row < p.doc.RowCount()-1 {
 		p.row++
 		p.col = 0
 	}
-	p.row = clamp(p.row, 0, p.arr.RowCount()-1)
-	p.col = clamp(p.col, 0, p.arr.Row(p.row).CellCount()-1)
+	p.row = clamp(p.row, 0, p.doc.RowCount()-1)
+	p.col = clamp(p.col, 0, p.doc.Row(p.row).CellCount()-1)
 	if p.row != oldRow || p.col != oldCol {
 		p.editor.Commit()
 		p.editor = p.Cell().Edit()
@@ -84,118 +82,6 @@ func (p *Pen) Handle(e termbox.Event) {
 type CellEditor interface {
 	Input(termbox.Event)
 	Commit()
-}
-
-type indexCellEditor struct {
-	*indexCell
-}
-
-func newIndexCellEditor(c *indexCell) CellEditor {
-	return &indexCellEditor{c}
-}
-
-func (c *indexCellEditor) Input(e termbox.Event) {}
-func (c *indexCellEditor) Commit()               {}
-
-type patternCellEditor struct {
-	*patternCell
-	buffer string
-}
-
-func newPatternCellEditor(c *patternCell) CellEditor {
-	return &patternCellEditor{c, ""}
-}
-
-func (c *patternCellEditor) Input(e termbox.Event) {
-	if e.Type != termbox.EventKey {
-		return
-	}
-	if e.Key == termbox.KeyDelete {
-		c.buffer = "..."
-	} else {
-		var ok bool
-		if len(c.buffer) == 0 {
-			ch := unicode.ToUpper(e.Ch)
-			ok = ch >= 'A' && ch <= 'H'
-		} else {
-			_, ok = ParsePattern(c.buffer + string(e.Ch))
-		}
-		if !ok {
-			return
-		}
-		c.buffer += string(e.Ch)
-	}
-	c.Set(c.row, c.col, pad(c.buffer, ' ', 3))
-}
-
-func (c *patternCellEditor) Commit() {
-	p, ok := ParsePattern(c.buffer)
-	if ok {
-		c.Set(c.row, c.col, p.String())
-	}
-}
-
-type muteCellEditor struct {
-	*muteCell
-	mute Mute
-}
-
-func newMuteCellEditor(c *muteCell) CellEditor {
-	return &muteCellEditor{c, ParseMute(c.String(), c.channelCount)}
-}
-
-func (c *muteCellEditor) Input(e termbox.Event) {
-	if isKeyDelete(e) {
-		c.mute.Clear()
-		c.Set(c.row, c.col, strings.Repeat(".", len(c.mute)))
-		return
-	}
-	if e.Type == termbox.EventKey && e.Ch == '-' {
-		c.mute.Clear()
-		c.Set(c.row, c.col, c.mute.String())
-		return
-	}
-	if !isKeyDigit(e) {
-		return
-	}
-	n := int(e.Ch) - '1'
-	if n < 0 || n >= len(c.mute) {
-		return
-	}
-	c.mute[n] = !c.mute[n]
-	c.Set(c.row, c.col, c.mute.String())
-}
-
-func (c *muteCellEditor) Commit() {}
-
-type lenCellEditor struct {
-	*lenCell
-	buffer string
-}
-
-func newLenCellEditor(c *lenCell) CellEditor {
-	return &lenCellEditor{c, ""}
-}
-
-func (c *lenCellEditor) Input(e termbox.Event) {
-	if !isKeyDigit(e) {
-		return
-	}
-	n, err := strconv.Atoi(c.buffer + string(e.Ch))
-	if err != nil || n > 1024 {
-		return
-	}
-	c.buffer += string(e.Ch)
-	c.Set(c.row, c.col, c.buffer)
-}
-
-func (c *lenCellEditor) Commit() {
-	if c.buffer == "" {
-		return
-	}
-	n, _ := strconv.Atoi(c.buffer)
-	n = clamp(n, 1, 1024)
-	c.Set(c.row, c.col, strconv.Itoa(n))
 }
 
 func isKeyLetter(e termbox.Event) bool {
