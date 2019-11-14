@@ -13,8 +13,8 @@ const (
 )
 
 var (
-	arr *Arrangement
-	cur *Pen
+	doc *Arrangement
+	pen *Pen
 )
 
 func main() {
@@ -26,11 +26,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	//TODO Bring back tmp.trk
-	arr, err = LoadArrangement(os.Args[1])
+	doc, err = LoadArrangement(os.Args[1])
 	must(err)
 
-	cur = NewPen(arr)
+	pen = NewPen(doc)
 
 	err = termbox.Init()
 	must(err)
@@ -42,11 +41,12 @@ func main() {
 		switch e.Type {
 		case termbox.EventKey:
 			switch e.Key {
-			case termbox.KeyCtrlX:
-				done = true
+			case termbox.KeyCtrlS, termbox.KeyCtrlX:
+				doc.WriteFile(os.Args[1])
+				done = e.Key == termbox.KeyCtrlX
 			}
 		}
-		cur.Handle(e)
+		pen.Handle(e)
 		render()
 	}
 }
@@ -71,15 +71,18 @@ func min(a, b int) int {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	for i := 0; i < pageSize; i++ {
-		r := cur.Row() - 8 + i
-		if r < 0 || r >= arr.RowCount() {
+		r := pen.Row() - 8 + i
+		if r < 0 || r >= doc.RowCount() {
 			continue
 		}
-		line := arr.Row(r).String()
-		SetString(0, i, line, termbox.ColorBlue, termbox.ColorDefault)
-		cell := cur.Cell()
-		if i == 8 {
-			SetString(cur.Range().Index, i, cell.String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
+		line := doc.Row(r).String()
+		fg := termbox.ColorBlue
+		if i == 8 && !pen.Editing() {
+			fg = fg | termbox.AttrReverse
+		}
+		SetString(0, i, line, fg, termbox.ColorDefault)
+		if i == 8 && pen.Editing() {
+			SetString(pen.Range().Index, i, pen.Cell().String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
 		}
 	}
 	termbox.Flush()

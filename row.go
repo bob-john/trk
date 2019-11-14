@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+func makeEmptyRow() []string {
+	return []string{"...", "........", "...", "....", "64"}
+}
+
 type Row struct {
 	doc *Arrangement
 	row int

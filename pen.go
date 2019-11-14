@@ -14,8 +14,7 @@ type Pen struct {
 }
 
 func NewPen(doc *Arrangement) *Pen {
-	c := doc.Cell(0, 0)
-	return &Pen{doc: doc, editor: c.Edit(), undo: c.String()}
+	return &Pen{doc: doc}
 }
 
 func (p *Pen) Row() int {
@@ -28,6 +27,10 @@ func (p *Pen) Cell() Cell {
 
 func (p *Pen) Range() Range {
 	return p.doc.Row(p.row).Range(p.col)
+}
+
+func (p *Pen) Editing() bool {
+	return p.editor != nil
 }
 
 func (p *Pen) Handle(e termbox.Event) {
@@ -49,18 +52,46 @@ func (p *Pen) Handle(e termbox.Event) {
 			p.row = p.doc.RowCount() - 1
 
 		case termbox.KeyArrowLeft:
-			p.col--
+			if p.editor != nil {
+				p.col--
+			}
 		case termbox.KeyArrowRight:
-			p.col++
+			if p.editor != nil {
+				p.col++
+			}
 
 		case termbox.KeyEsc:
-			if p.col > 0 {
+			if p.editor != nil {
 				p.Cell().Set(p.undo)
 				p.editor = p.Cell().Edit()
 			}
+		case termbox.KeyEnter:
+			if p.editor != nil {
+				p.editor.Commit()
+				p.editor = nil
+				p.undo = ""
+			} else {
+				p.undo = p.Cell().String()
+				p.editor = p.Cell().Edit()
+			}
+
+		case termbox.KeyInsert:
+			if p.editor != nil {
+				p.editor.Input(e)
+			} else {
+				p.doc.InsertAfter(p.row)
+			}
+		case termbox.KeyDelete:
+			if p.editor != nil {
+				p.editor.Input(e)
+			} else {
+				p.doc.Delete(p.Row())
+			}
 
 		default:
-			p.editor.Input(e)
+			if p.editor != nil {
+				p.editor.Input(e)
+			}
 		}
 	}
 	if p.col < 0 && p.row > 0 {
@@ -72,10 +103,10 @@ func (p *Pen) Handle(e termbox.Event) {
 	}
 	p.row = clamp(p.row, 0, p.doc.RowCount()-1)
 	p.col = clamp(p.col, 0, p.doc.Row(p.row).CellCount()-1)
-	if p.row != oldRow || p.col != oldCol {
+	if p.editor != nil && (p.row != oldRow || p.col != oldCol) {
 		p.editor.Commit()
-		p.editor = p.Cell().Edit()
 		p.undo = p.Cell().String()
+		p.editor = p.Cell().Edit()
 	}
 }
 

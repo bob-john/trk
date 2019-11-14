@@ -31,6 +31,9 @@ func (c *lenCellEditor) Input(e termbox.Event) {
 	if !isKeyDigit(e) {
 		return
 	}
+	if c.buffer == "" && e.Ch == '0' {
+		return
+	}
 	n, err := strconv.Atoi(c.buffer + string(e.Ch))
 	if err != nil || n > 1024 {
 		return

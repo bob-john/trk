@@ -23,7 +23,7 @@ func LoadArrangement(path string) (*Arrangement, error) {
 }
 
 func NewArrangement() *Arrangement {
-	return &Arrangement{}
+	return &Arrangement{[][]string{makeEmptyRow()}}
 }
 
 func (a *Arrangement) RowCount() int {
@@ -44,4 +44,29 @@ func (a *Arrangement) Set(row, col int, value string) {
 
 func (a *Arrangement) Get(row, col int) string {
 	return a.rows[row][col]
+}
+
+func (a *Arrangement) Delete(row int) {
+	a.rows = append(a.rows[:row], a.rows[row+1:]...)
+	if len(a.rows) == 0 {
+		a.rows = [][]string{makeEmptyRow()}
+	}
+}
+
+func (a *Arrangement) InsertAfter(row int) {
+	a.rows = append(a.rows[:row+1], append([][]string{makeEmptyRow()}, a.rows[row+1:]...)...)
+}
+
+func (a *Arrangement) WriteFile(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	err = w.WriteAll(a.rows)
+	if err != nil {
+		return err
+	}
+	return f.Close()
 }
