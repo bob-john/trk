@@ -64,7 +64,7 @@ func newMuteCellEditor(c *muteCell) CellEditor {
 }
 
 func (c *muteCellEditor) Input(e termbox.Event) {
-	if isKeyDelete(e) {
+	if isKeyBackspace(e) {
 		c.mute.Clear()
 		c.Set(strings.Repeat(".", len(c.mute)))
 		return

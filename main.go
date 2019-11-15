@@ -148,14 +148,11 @@ func render() {
 		}
 		line := doc.Row(r).String()
 		fg := termbox.ColorBlue
-		if !playing && i == 8 && !pen.Editing() {
-			fg = fg | termbox.AttrReverse
-		}
 		if playing && r == head {
 			fg = termbox.ColorYellow | termbox.AttrReverse
 		}
 		SetString(0, i, line, fg, termbox.ColorDefault)
-		if !playing && i == 8 && pen.Editing() {
+		if !playing && i == 8 {
 			SetString(pen.Range().Index, i, pen.Cell().String(), termbox.ColorBlue|termbox.AttrReverse, termbox.ColorDefault)
 		}
 	}

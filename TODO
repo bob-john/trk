@@ -1,9 +1,8 @@
-+ Editor
-- Remove line mode for the pen, cell mode only (ie. see KeyEnter).
-- Backspace should clear the cell.
-- Delete should remove the line.
-
 + Tracker
 - Play the line when playing.
 - Play the line when moving the pen (this is tricky: consolidate the changes when going up!).
 - Play the cell on commit or input when appropriate (commit for pattern, input for mute, len is not concerned).
+
++ Features
+- Allow negative len (countdown from the end of the previous row, allow for successive row with negative row, ie. do not add).
+

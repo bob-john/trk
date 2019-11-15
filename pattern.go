@@ -76,7 +76,7 @@ func (c *patternCellEditor) Input(e termbox.Event) {
 	if e.Type != termbox.EventKey {
 		return
 	}
-	if e.Key == termbox.KeyDelete {
+	if isKeyBackspace(e) {
 		c.buffer = ""
 		c.Set("...")
 		return

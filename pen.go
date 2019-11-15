@@ -29,12 +29,14 @@ func (p *Pen) Range() Range {
 	return p.doc.Row(p.row).Range(p.col)
 }
 
-func (p *Pen) Editing() bool {
-	return p.editor != nil
-}
-
 func (p *Pen) Handle(e termbox.Event) {
 	oldRow, oldCol := p.row, p.col
+
+	if p.editor == nil {
+		p.undo = p.Cell().String()
+		p.editor = p.Cell().Edit()
+	}
+
 	switch e.Type {
 	case termbox.EventKey:
 		switch e.Key {
@@ -52,42 +54,21 @@ func (p *Pen) Handle(e termbox.Event) {
 			p.row = p.doc.RowCount() - 1
 
 		case termbox.KeyArrowLeft:
-			if p.editor != nil {
-				p.col--
-			}
+			p.col--
 		case termbox.KeyArrowRight:
-			if p.editor != nil {
-				p.col++
-			}
+			p.col++
 
 		case termbox.KeyEsc:
-			if p.editor != nil {
-				p.Cell().Set(p.undo)
-				p.editor = p.Cell().Edit()
-			}
-		case termbox.KeyEnter:
-			if p.editor != nil {
-				p.editor.Commit()
-				p.editor = nil
-				p.undo = ""
-			} else {
-				p.undo = p.Cell().String()
-				p.editor = p.Cell().Edit()
-			}
+			p.Cell().Set(p.undo)
+			p.editor = p.Cell().Edit()
 
 		case termbox.KeyInsert:
 			p.doc.InsertAfter(p.row)
 		case termbox.KeyDelete:
-			if p.editor != nil {
-				p.editor.Input(e)
-			} else {
-				p.doc.Delete(p.Row())
-			}
+			p.doc.Delete(p.Row())
 
 		default:
-			if p.editor != nil {
-				p.editor.Input(e)
-			}
+			p.editor.Input(e)
 		}
 	}
 	if p.col < 0 && p.row > 0 {
@@ -99,7 +80,7 @@ func (p *Pen) Handle(e termbox.Event) {
 	}
 	p.row = clamp(p.row, 0, p.doc.RowCount()-1)
 	p.col = clamp(p.col, 0, p.doc.Row(p.row).CellCount()-1)
-	if p.editor != nil && (p.row != oldRow || p.col != oldCol) {
+	if p.row != oldRow || p.col != oldCol {
 		p.editor.Commit()
 		p.undo = p.Cell().String()
 		p.editor = p.Cell().Edit()
@@ -117,10 +98,6 @@ func isKeyLetter(e termbox.Event) bool {
 
 func isKeyDigit(e termbox.Event) bool {
 	return e.Type == termbox.EventKey && unicode.IsDigit(e.Ch)
-}
-
-func isKeyDelete(e termbox.Event) bool {
-	return e.Type == termbox.EventKey && e.Key == termbox.KeyDelete
 }
 
 func isKeyBackspace(e termbox.Event) bool {
