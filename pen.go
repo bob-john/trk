@@ -29,7 +29,7 @@ func (p *Pen) Range() Range {
 	return p.doc.Row(p.row).Range(p.col)
 }
 
-func (p *Pen) Handle(e termbox.Event) {
+func (p *Pen) Handle(e termbox.Event, digitakt, digitone *Device) {
 	oldRow, oldCol := p.row, p.col
 
 	if p.editor == nil {
@@ -69,6 +69,7 @@ func (p *Pen) Handle(e termbox.Event) {
 
 		default:
 			p.editor.Input(e)
+			p.doc.Row(p.row).Output(digitakt, digitone)
 		}
 	}
 	if p.col < 0 && p.row > 0 {
@@ -84,6 +85,7 @@ func (p *Pen) Handle(e termbox.Event) {
 		p.editor.Commit()
 		p.undo = p.Cell().String()
 		p.editor = p.Cell().Edit()
+		p.doc.Row(p.row).Output(digitakt, digitone)
 	}
 }
 

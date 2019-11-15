@@ -49,6 +49,8 @@ func main() {
 	digitakt, _ = OpenDevice("Elektron Digitakt", "Elektron Digitakt")
 	digitone, _ = OpenDevice("Elektron Digitone", "Elektron Digitone")
 
+	doc.Row(0).Output(digitakt, digitone)
+
 	var (
 		eventC = make(chan termbox.Event)
 		midiC  <-chan midi.Message
@@ -86,7 +88,7 @@ func main() {
 				}
 			}
 			if !playing {
-				pen.Handle(e)
+				pen.Handle(e, digitakt, digitone)
 			}
 
 		case m := <-midiC:

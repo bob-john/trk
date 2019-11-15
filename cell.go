@@ -4,6 +4,7 @@ type Cell interface {
 	Edit() CellEditor
 	Set(string)
 	String() string
+	Output(*Device)
 }
 
 type stringCell struct {

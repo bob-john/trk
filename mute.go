@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/gomidi/midi/midimessage/channel"
 	"github.com/nsf/termbox-go"
 )
 
@@ -52,6 +53,19 @@ func newMuteCell(doc *Arrangement, row, col, channelCount int) Cell {
 
 func (c muteCell) Edit() CellEditor {
 	return newMuteCellEditor(&c)
+}
+
+func (c muteCell) Output(out *Device) {
+	if c.String() == strings.Repeat(".", c.channelCount) {
+		return
+	}
+	for n, m := range ParseMute(c.String(), c.channelCount) {
+		var v uint8
+		if m {
+			v = 127
+		}
+		out.Write(channel.Channel(n).ControlChange(94, v))
+	}
 }
 
 type muteCellEditor struct {

@@ -18,6 +18,8 @@ func (c lenCell) Edit() CellEditor {
 	return newLenCellEditor(&c)
 }
 
+func (c lenCell) Output(*Device) {}
+
 type lenCellEditor struct {
 	*lenCell
 	buffer string

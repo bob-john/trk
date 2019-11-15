@@ -66,6 +66,13 @@ func (r Row) String() string {
 	return strings.Join(cells, " ")
 }
 
+func (r Row) Output(digitakt, digitone *Device) {
+	r.doc.ConsolidatedCell(r.row, 0).Output(digitakt)
+	r.doc.ConsolidatedCell(r.row, 1).Output(digitakt)
+	r.doc.ConsolidatedCell(r.row, 2).Output(digitone)
+	r.doc.ConsolidatedCell(r.row, 3).Output(digitone)
+}
+
 type Part struct {
 	row Row
 	col int
@@ -77,4 +84,8 @@ func (p Part) Pattern() Cell {
 
 func (p Part) Mute() Cell {
 	return p.row.Cell(p.col + 1)
+}
+
+func isCellEmpty(c Cell) bool {
+	return c.String() == strings.Repeat(".", len(c.String()))
 }

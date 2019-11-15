@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/gomidi/midi/midimessage/channel"
 	"github.com/nsf/termbox-go"
 )
 
@@ -61,6 +62,14 @@ func newPatternCell(doc *Arrangement, row, col int) Cell {
 
 func (c patternCell) Edit() CellEditor {
 	return newPatternCellEditor(&c)
+}
+
+func (c patternCell) Output(out *Device) {
+	p, ok := ParsePattern(c.String())
+	if !ok {
+		return
+	}
+	out.Write(channel.Channel9.ProgramChange(uint8(p)))
 }
 
 type patternCellEditor struct {

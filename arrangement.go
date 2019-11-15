@@ -38,6 +38,15 @@ func (a *Arrangement) Cell(row, col int) Cell {
 	return a.Row(row).Cell(col)
 }
 
+func (a *Arrangement) ConsolidatedCell(row, col int) Cell {
+	c := a.Cell(row, col)
+	for isCellEmpty(c) && row > 0 {
+		row--
+		c = a.Cell(row, col)
+	}
+	return c
+}
+
 func (a *Arrangement) Set(row, col int, value string) {
 	a.rows[row][col] = value
 }
