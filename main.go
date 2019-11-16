@@ -112,6 +112,12 @@ func main() {
 			// }
 		}
 		rowLen, _ := strconv.Atoi(doc.Row(head).Len().String())
+		if tick == (rowLen-1)*6 && head+1 < doc.RowCount() {
+			doc.Row(head+1).OutputMute(digitakt, digitone)
+		}
+		if tick == (rowLen-2)*6 && head+1 < doc.RowCount() {
+			doc.Row(head+1).OutputPattern(digitakt, digitone)
+		}
 		if tick == rowLen*6 {
 			head++
 			tick = 0
@@ -144,13 +150,18 @@ func render() {
 	SetString(30, 0, fmt.Sprintf("Digitakt: %v", digitakt != nil), termbox.ColorDefault, termbox.ColorDefault)
 	SetString(30, 1, fmt.Sprintf("Digitone: %v", digitone != nil), termbox.ColorDefault, termbox.ColorDefault)
 	for i := 0; i < pageSize; i++ {
-		r := pen.Row() - 8 + i
+		var r int
+		if playing {
+			r = head - 8 + i
+		} else {
+			r = pen.Row() - 8 + i
+		}
 		if r < 0 || r >= doc.RowCount() {
 			continue
 		}
 		line := doc.Row(r).String()
 		fg := termbox.ColorBlue
-		if playing && r == head {
+		if playing && i == 8 {
 			fg = termbox.ColorYellow | termbox.AttrReverse
 		}
 		SetString(0, i, line, fg, termbox.ColorDefault)

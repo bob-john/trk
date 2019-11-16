@@ -67,9 +67,17 @@ func (r Row) String() string {
 }
 
 func (r Row) Output(digitakt, digitone *Device) {
+	r.OutputPattern(digitakt, digitone)
+	r.OutputMute(digitakt, digitone)
+}
+
+func (r Row) OutputPattern(digitakt, digitone *Device) {
 	r.doc.ConsolidatedCell(r.row, 0).Output(digitakt)
-	r.doc.ConsolidatedCell(r.row, 1).Output(digitakt)
 	r.doc.ConsolidatedCell(r.row, 2).Output(digitone)
+}
+
+func (r Row) OutputMute(digitakt, digitone *Device) {
+	r.doc.ConsolidatedCell(r.row, 1).Output(digitakt)
 	r.doc.ConsolidatedCell(r.row, 3).Output(digitone)
 }
 
