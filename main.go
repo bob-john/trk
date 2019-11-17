@@ -121,7 +121,7 @@ func main() {
 					if state == Viewing || state == Playing {
 						seq.Clear(head)
 					}
-				case termbox.KeySpace, termbox.KeyEnter:
+				case termbox.KeyEnter:
 					if state == Viewing {
 						state = Recording
 					} else if state == Recording {
