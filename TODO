@@ -1,3 +1,6 @@
 + Features
 - Allow negative len (countdown from the end of the previous row, allow for successive row with negative row, ie. do not add).
 - Display help
+
++ Code
+- Definition structure (channels & device name)
