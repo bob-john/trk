@@ -3,4 +3,5 @@
 - Display help
 
 + Code
-- Definition structure (channels & device name)
+- Definition structure (channels, device name, port - to know whether to merge message send and receive, typically mutes)
+

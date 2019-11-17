@@ -14,12 +14,11 @@ const (
 )
 
 var (
-	seq       *Seq
-	digitakt  *Device
-	digitone  *Device
-	head      int
-	playing   bool
-	recording bool
+	seq      *Seq
+	digitakt *Device
+	digitone *Device
+	head     int
+	playing  bool
 )
 
 func main() {
@@ -118,8 +117,10 @@ func main() {
 						row++
 					}
 
-				case termbox.KeySpace:
-					recording = !recording
+				case termbox.KeyDelete, termbox.KeyBackspace:
+					if !playing {
+						seq.Clear(head)
+					}
 				}
 			}
 
@@ -138,7 +139,9 @@ func main() {
 			case realtime.Stop:
 				playing = false
 			}
-			seq.Insert(m.Device.Name(), head, m.Message)
+			if !playing {
+				seq.Insert(m.Device.Name(), head, m.Message)
+			}
 		}
 		if playing {
 			if tick == 0 {
@@ -147,6 +150,7 @@ func main() {
 				curr.Digitone.Mute.Play(digitone, curr.Digitone.Channels)
 				next.Digitakt.Pattern.Play(digitakt, 15)
 				curr.Digitakt.Mute.Play(digitakt, curr.Digitakt.Channels)
+				curr.Digitone.Mute.Play(digitakt, curr.Digitone.Channels) //HACK
 			}
 			if tick == 6 {
 				head++
@@ -181,9 +185,7 @@ func render() {
 	for n := 0; n < 16; n++ {
 		fg := termbox.ColorBlue
 		if n == (head/16)%16 {
-			if recording {
-				fg = termbox.ColorRed
-			} else if playing {
+			if playing {
 				fg = termbox.ColorGreen
 			}
 			fg = fg | termbox.AttrReverse
@@ -196,9 +198,7 @@ func render() {
 		step := 16*p + n
 		fg, bg := termbox.ColorBlue, termbox.ColorDefault
 		if step == head {
-			if recording {
-				fg = termbox.ColorRed
-			} else if playing {
+			if playing {
 				fg = termbox.ColorGreen
 			}
 			fg = fg | termbox.AttrReverse

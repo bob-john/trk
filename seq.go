@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -91,32 +92,30 @@ func (s *Seq) Write(path string) error {
 }
 
 func (s *Seq) Insert(device string, row int, message midi.Message) {
+	r := s.Row(row)
 	switch m := message.(type) {
 	case channel.ProgramChange:
-		r := s.Row(row)
 		if strings.Contains(device, "Digitone") {
 			r.Digitone.Pattern = Pattern(m.Program())
-			s.row[row] = r
 		}
 		if strings.Contains(device, "Digitakt") {
 			r.Digitakt.Pattern = Pattern(m.Program())
-			s.row[row] = r
 		}
 
 	case channel.ControlChange:
 		if m.Controller() != 94 {
 			return
 		}
-		r := s.Row(row)
 		ch := int(m.Channel())
 		if r.Digitone.Channels.Contains(ch) {
 			r.Digitone.Mute[r.Digitone.Channels.IndexOf(ch)] = m.Value() != 0
-			s.row[row] = r
 		}
 		if r.Digitakt.Channels.Contains(ch) {
 			r.Digitakt.Mute[r.Digitakt.Channels.IndexOf(ch)] = m.Value() != 0
-			s.row[row] = r
 		}
+	}
+	if r.HasChanges(s.ConsolidatedRow(row)) {
+		s.row[row] = r
 	}
 }
 
@@ -133,12 +132,16 @@ func (s *Seq) Row(index int) *Row {
 }
 
 func (s *Seq) ConsolidatedRow(index int) *Row {
-	row := s.Row(index)
+	row := s.Row(index).Copy()
 	for index > 0 && !row.Consolidated() {
 		index--
 		row.Merge(s.Row(index))
 	}
 	return row
+}
+
+func (s *Seq) Clear(row int) {
+	s.row[row] = NewRow(row)
 }
 
 func (s *Seq) Text(row int) string {
@@ -205,6 +208,26 @@ func (r *Row) Merge(o *Row) {
 func (r *Row) Play(digitone, digitakt *Device) {
 	r.Digitone.Play(digitone)
 	r.Digitakt.Play(digitakt)
+
+	r.Digitone.Mute.Play(digitakt, r.Digitone.Channels) //HACK
+}
+
+func (r *Row) HasChanges(prev *Row) bool {
+	if r.Digitone.HasChanges(prev.Digitone) {
+		return true
+	}
+	if r.Digitakt.HasChanges(prev.Digitakt) {
+		return true
+	}
+	return false
+}
+
+func (r *Row) Copy() *Row {
+	return &Row{
+		Index:    r.Index,
+		Digitone: r.Digitone.Copy(),
+		Digitakt: r.Digitakt.Copy(),
+	}
 }
 
 type Part struct {
@@ -263,6 +286,24 @@ func (p *Part) Play(out *Device) {
 	p.Mute.Play(out, p.Channels)
 }
 
+func (p *Part) HasChanges(prev *Part) bool {
+	if p.Pattern != -1 && p.Pattern != prev.Pattern {
+		return true
+	}
+	if len(p.Mute) != 0 && !reflect.DeepEqual(p.Mute, prev.Mute) {
+		return true
+	}
+	return false
+}
+
+func (p *Part) Copy() *Part {
+	return &Part{
+		Pattern:  p.Pattern,
+		Mute:     p.Mute.Copy(),
+		Channels: p.Channels,
+	}
+}
+
 type Pattern int
 
 func DecodePattern(field string) Pattern {
@@ -270,9 +311,9 @@ func DecodePattern(field string) Pattern {
 		return -1
 	}
 	bank := int(field[0] - 'A')
-	pattern, err := strconv.Atoi(field[1:])
-	if bank >= 0 && bank < 8 && pattern >= 0 && pattern < 16 && err == nil {
-		return Pattern(16*bank + pattern)
+	trig, err := strconv.Atoi(field[1:])
+	if bank >= 0 && bank < 8 && trig >= 1 && trig <= 16 && err == nil {
+		return Pattern(16*bank + trig - 1)
 	}
 	return -1
 }
@@ -293,11 +334,13 @@ type Mute map[int]bool
 func DecodeMute(field string) (res Mute) {
 	res = make(map[int]bool)
 	for _, c := range field {
-		if c-'1' >= 0 && c-'1' < 8 {
-			res[int(c-'1')] = false
-		} else if c-'A' >= 0 && c-'A' < 8 {
-			res[int(8+c-'A')] = false
+		n := int(c - '1')
+		if n >= 0 && n < 8 {
+			res[n] = false
 		}
+	}
+	if len(res) == 0 {
+		return
 	}
 	for n := 0; n < 16; n++ {
 		if _, ok := res[n]; !ok {
@@ -327,12 +370,20 @@ func (m Mute) String() string {
 }
 
 func (m Mute) Play(out *Device, channels Range) {
-	for k, v := range m {
-		ch := channels.Index + k
+	for n := 0; n < channels.Len; n++ {
+		ch := channels.Index + n
 		var muted uint8
-		if v {
+		if m[n] {
 			muted = 1
 		}
 		out.Write(channel.Channel(ch).ControlChange(94, muted))
 	}
+}
+
+func (m Mute) Copy() Mute {
+	cpy := make(Mute)
+	for k, v := range m {
+		cpy[k] = v
+	}
+	return cpy
 }
