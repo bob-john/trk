@@ -139,7 +139,6 @@ func main() {
 			case realtime.Start:
 				state = Playing
 				tick = 0
-				head = 0
 			case realtime.Continue:
 				state = Playing
 			case realtime.Stop:
