@@ -10,11 +10,12 @@ import (
 )
 
 type Device struct {
+	name string
 	*Input
 	*Output
 }
 
-func OpenDevice(inputName, outputName string) (*Device, error) {
+func OpenDevice(name, inputName, outputName string) (*Device, error) {
 	in, err := OpenInput(inputName)
 	if err != nil {
 		return nil, err
@@ -23,7 +24,11 @@ func OpenDevice(inputName, outputName string) (*Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Device{in, out}, nil
+	return &Device{name, in, out}, nil
+}
+
+func (d *Device) Name() string {
+	return d.name
 }
 
 func (d *Device) Close() {
@@ -104,4 +109,9 @@ func (o *Output) Close() error {
 
 func (o *Output) Write(m midi.Message) error {
 	return o.w.Write(m)
+}
+
+type Message struct {
+	midi.Message
+	*Device
 }

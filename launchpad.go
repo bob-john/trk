@@ -14,7 +14,7 @@ type Launchpad struct {
 }
 
 func ConnectLaunchpad() (*Launchpad, error) {
-	d, err := OpenDevice("MIDIIN2 (LPMiniMK3 MIDI)", "MIDIOUT2 (LPMiniMK3 MIDI)")
+	d, err := OpenDevice("LPMiniMK3", "MIDIIN2 (LPMiniMK3 MIDI)", "MIDIOUT2 (LPMiniMK3 MIDI)")
 	// d, err := OpenDevice("MIDIIN2 (LPMiniMK3 MIDI)", "loopMIDI Port")
 	if err != nil {
 		return nil, err
