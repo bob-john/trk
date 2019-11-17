@@ -108,9 +108,11 @@ func (s *Seq) Insert(device string, row int, message midi.Message) {
 		}
 		ch := int(m.Channel())
 		if r.Digitone.Channels.Contains(ch) {
+			r.Digitone.Mute = s.ConsolidatedRow(row).Digitone.Mute.Copy()
 			r.Digitone.Mute[r.Digitone.Channels.IndexOf(ch)] = m.Value() != 0
 		}
 		if r.Digitakt.Channels.Contains(ch) {
+			r.Digitakt.Mute = s.ConsolidatedRow(row).Digitakt.Mute.Copy()
 			r.Digitakt.Mute[r.Digitakt.Channels.IndexOf(ch)] = m.Value() != 0
 		}
 	}

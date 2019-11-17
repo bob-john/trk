@@ -1,7 +1,6 @@
 + Features
-- Allow negative len (countdown from the end of the previous row, allow for successive row with negative row, ie. do not add).
+- Song part (A-Z): pg up/dn to change, +/- to add or remove pattern from part
 - Display help
 
-+ Code
-- Definition structure (channels, device name, port - to know whether to merge message send and receive, typically mutes)
-
++ Format .trk
+- Add a definition file (channels, device name, port - to know whether to merge message send and receive, typically mutes)
