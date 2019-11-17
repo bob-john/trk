@@ -144,15 +144,19 @@ func main() {
 			}
 		}
 		if playing {
-			if tick == 0 {
-				curr, next := seq.ConsolidatedRow(head), seq.ConsolidatedRow(head+2)
-				next.Digitone.Pattern.Play(digitone, 15)
-				curr.Digitone.Mute.Play(digitone, curr.Digitone.Channels)
-				next.Digitakt.Pattern.Play(digitakt, 15)
-				curr.Digitakt.Mute.Play(digitakt, curr.Digitakt.Channels)
-				curr.Digitone.Mute.Play(digitakt, curr.Digitone.Channels) //HACK
-			}
-			if tick == 6 {
+			switch tick {
+			case 12:
+				row := seq.ConsolidatedRow(head + 2)
+				row.Digitone.Pattern.Play(digitone, 15)
+				row.Digitakt.Pattern.Play(digitakt, 15)
+
+			case 18:
+				row := seq.ConsolidatedRow(head + 1)
+				row.Digitone.Mute.Play(digitone, row.Digitone.Channels)
+				row.Digitakt.Mute.Play(digitakt, row.Digitakt.Channels)
+				row.Digitone.Mute.Play(digitakt, row.Digitone.Channels) //HACK
+
+			case 24:
 				head++
 				tick = 0
 			}
