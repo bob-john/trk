@@ -92,7 +92,7 @@ func (s *Seq) Write(path string) error {
 }
 
 func (s *Seq) Insert(device string, row int, message midi.Message) {
-	r := s.Row(row)
+	r := s.Row(row).Copy()
 	switch m := message.(type) {
 	case channel.ProgramChange:
 		if strings.Contains(device, "Digitone") {

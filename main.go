@@ -18,7 +18,7 @@ var (
 	digitakt *Device
 	digitone *Device
 	head     int
-	playing  bool
+	state    State
 )
 
 func main() {
@@ -101,25 +101,31 @@ func main() {
 					done = true
 
 				case termbox.KeyArrowRight:
-					if !playing {
+					if state == Viewing {
 						col++
 					}
 				case termbox.KeyArrowLeft:
-					if !playing {
+					if state == Viewing {
 						col--
 					}
 				case termbox.KeyArrowUp:
-					if !playing {
+					if state == Viewing {
 						row--
 					}
 				case termbox.KeyArrowDown:
-					if !playing {
+					if state == Viewing {
 						row++
 					}
 
 				case termbox.KeyDelete, termbox.KeyBackspace:
-					if !playing {
+					if state == Viewing || state == Playing {
 						seq.Clear(head)
+					}
+				case termbox.KeySpace, termbox.KeyEnter:
+					if state == Viewing {
+						state = Recording
+					} else if state == Recording {
+						state = Viewing
 					}
 				}
 			}
@@ -127,23 +133,23 @@ func main() {
 		case m := <-midiC:
 			switch m.Message {
 			case realtime.TimingClock:
-				if playing {
+				if state == Playing {
 					tick++
 				}
 			case realtime.Start:
-				playing = true
+				state = Playing
 				tick = 0
 				head = 0
 			case realtime.Continue:
-				playing = true
+				state = Playing
 			case realtime.Stop:
-				playing = false
+				state = Viewing
 			}
-			if !playing {
+			if state == Recording {
 				seq.Insert(m.Device.Name(), head, m.Message)
 			}
 		}
-		if playing {
+		if state == Playing {
 			switch tick {
 			case 12:
 				row := seq.ConsolidatedRow(head + 2)
@@ -189,8 +195,11 @@ func render() {
 	for n := 0; n < 16; n++ {
 		fg := termbox.ColorBlue
 		if n == (head/16)%16 {
-			if playing {
+			switch state {
+			case Playing:
 				fg = termbox.ColorGreen
+			case Recording:
+				fg = termbox.ColorRed
 			}
 			fg = fg | termbox.AttrReverse
 		}
@@ -202,8 +211,11 @@ func render() {
 		step := 16*p + n
 		fg, bg := termbox.ColorBlue, termbox.ColorDefault
 		if step == head {
-			if playing {
+			switch state {
+			case Playing:
 				fg = termbox.ColorGreen
+			case Recording:
+				fg = termbox.ColorRed
 			}
 			fg = fg | termbox.AttrReverse
 		}
@@ -211,3 +223,11 @@ func render() {
 	}
 	termbox.Flush()
 }
+
+type State int
+
+const (
+	Viewing State = iota
+	Recording
+	Playing
+)
