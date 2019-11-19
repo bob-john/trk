@@ -328,6 +328,9 @@ func (p Pattern) String() string {
 }
 
 func (p Pattern) Play(out *Device, ch int) {
+	if out == nil {
+		return
+	}
 	out.Write(channel.Channel(ch).ProgramChange(uint8(p)))
 }
 
@@ -372,6 +375,9 @@ func (m Mute) String() string {
 }
 
 func (m Mute) Play(out *Device, channels Range) {
+	if out == nil {
+		return
+	}
 	for n := 0; n < channels.Len; n++ {
 		ch := channels.Index + n
 		var muted uint8
