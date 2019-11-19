@@ -127,7 +127,7 @@ func (s *Seq) Row(index int) *Row {
 		return r
 	}
 	r = NewRow(index)
-	if index == 0 {
+	if index <= 0 {
 		r.SetDefaults()
 	}
 	return r

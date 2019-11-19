@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
@@ -81,8 +82,12 @@ func main() {
 		tick int
 	)
 	for !done {
-		oldHead := head
-		row, col := head%16, head/16
+		var (
+			oldHead = head
+			pattern = head / 64
+			page    = (head % 64) / 16
+			trigger = head % 16
+		)
 		select {
 		case e := <-eventC:
 			switch e.Type {
@@ -102,19 +107,31 @@ func main() {
 
 				case termbox.KeyArrowRight:
 					if state == Viewing {
-						col++
+						trigger++
 					}
 				case termbox.KeyArrowLeft:
 					if state == Viewing {
-						col--
+						trigger--
 					}
 				case termbox.KeyArrowUp:
 					if state == Viewing {
-						row--
+						trigger -= 8
 					}
 				case termbox.KeyArrowDown:
 					if state == Viewing {
-						row++
+						trigger += 8
+					}
+				case termbox.KeyPgup:
+					if state == Viewing {
+						pattern--
+					}
+				case termbox.KeyPgdn:
+					if state == Viewing {
+						pattern++
+					}
+				case termbox.KeyTab, termbox.KeySpace:
+					if state == Viewing {
+						page++
 					}
 
 				case termbox.KeyDelete, termbox.KeyBackspace:
@@ -166,9 +183,8 @@ func main() {
 				tick = 0
 			}
 		} else {
-			row = clamp(row, 0, 16-1)
-			col = clamp(col, 0, 96-1)
-			head = 16*col + row
+			SetString(0, 8, strconv.Itoa(trigger), termbox.ColorDefault, termbox.ColorDefault)
+			head = clamp(pattern*64+page*16+trigger, 0, 8*16*64-1)
 			if head != oldHead {
 				seq.ConsolidatedRow(head).Play(digitone, digitakt)
 			}
@@ -188,37 +204,38 @@ func clamp(val, min, max int) int {
 	return val
 }
 
+func color(on, ch bool) (fg termbox.Attribute) {
+	if ch {
+		fg = termbox.ColorRed
+	}
+	if !on {
+		return
+	}
+	switch state {
+	case Playing:
+		fg = termbox.ColorGreen
+	case Recording:
+		fg = termbox.ColorRed
+	}
+	fg = fg | termbox.AttrReverse
+	return
+}
+
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	p := head / 16
+	row, org := seq.ConsolidatedRow(head), seq.Row(head)
+
+	SetString(6, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
+	SetString(6, 1, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
+	SetString(6+row.Digitone.Channels.Len+1, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
+	SetString(6+row.Digitone.Channels.Len+1, 1, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
+	SetString(0, 3, fmt.Sprintf("%s%02d", string('A'+head/64/16), 1+(head/64)%16), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
-		fg := termbox.ColorBlue
-		if n == (head/16)%16 {
-			switch state {
-			case Playing:
-				fg = termbox.ColorGreen
-			case Recording:
-				fg = termbox.ColorRed
-			}
-			fg = fg | termbox.AttrReverse
-		}
-		SetString(2+n*3, 0, fmt.Sprintf("%2d", 1+16*(p/16)+n), fg, termbox.ColorDefault)
+		ch := seq.Row(head/16*16 + n).HasChanges(seq.Row(head/16*16 + n - 1))
+		SetString(6+(n%8)*3, 3+n/8, fmt.Sprintf("%02d", 1+n), color(n == head%16, ch), termbox.ColorDefault)
 	}
-	SetString(4, 2, "DN", termbox.ColorBlue, termbox.ColorDefault)
-	SetString(13, 2, "DT", termbox.ColorBlue, termbox.ColorDefault)
-	for n := 0; n < 16; n++ {
-		step := 16*p + n
-		fg, bg := termbox.ColorBlue, termbox.ColorDefault
-		if step == head {
-			switch state {
-			case Playing:
-				fg = termbox.ColorGreen
-			case Recording:
-				fg = termbox.ColorRed
-			}
-			fg = fg | termbox.AttrReverse
-		}
-		SetString(0, 3+n, seq.Text(step), fg, bg)
+	for n := 0; n < 4; n++ {
+		SetString(32+n*4, 3, fmt.Sprintf("%d:4", 1+n), color(n == (head%64)/16, false), termbox.ColorDefault)
 	}
 	termbox.Flush()
 }
