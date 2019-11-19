@@ -224,7 +224,6 @@ func color(on, ch bool) (fg termbox.Attribute) {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	row, org := seq.ConsolidatedRow(head), seq.Row(head)
-
 	SetString(6, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
 	SetString(6, 1, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
 	SetString(6+row.Digitone.Channels.Len+1, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)

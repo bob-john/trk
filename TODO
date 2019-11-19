@@ -1,5 +1,7 @@
 + Features
-- Song part (A-Z): pg up/dn to change, +/- to add or remove pattern from part
+- Quit recording when moving around (instead of locking)
+- Enable mouse to click the UI, would be more intuitive than the keyboard
+- Song part?
 - Display help
 
 + Format .trk
