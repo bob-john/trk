@@ -1,3 +1,7 @@
++ Bug
+- Should not be able to clear first step
+- Moving around with keyboard is fiddly
+
 + Features
 - Add pattern length+scale like on the digitakt, keep the data per actual pattern (PC) - that would require two parameters (one per machine).
     - Or just global scale? Or nothing for now.
