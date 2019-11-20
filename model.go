@@ -1,72 +1,83 @@
 package main
 
-// const (
-// 	pageSize = 64
-// 	maxStep  = 64 * pageSize
-// )
+import "os"
 
-// type Model struct {
-// 	step     int
-// 	Digitakt *Synth
-// 	Digitone *Synth
-// }
+type Model struct {
+	Seq   *Seq
+	Head  int
+	State State
+}
 
-// func NewModel() *Model {
-// 	return &Model{0, NewSynth(8), NewSynth(4)}
-// }
+func (m *Model) LoadSeq(path string) error {
+	var err error
+	m.Seq, err = ReadSeq(path)
+	if os.IsNotExist(err) {
+		m.Seq = NewSeq()
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
 
-// func (m *Model) Step() int {
-// 	return m.step
-// }
+func (m *Model) Pattern() int {
+	return m.Head / 64
+}
 
-// func (m *Model) PageSize() int {
-// 	return pageSize
-// }
+func (m *Model) SetPattern(val int) {
+	m.setHead(val, m.Page(), m.Trig())
+}
 
-// func (m *Model) Page() int {
-// 	return m.step / pageSize
-// }
+func (m *Model) Page() int {
+	return (m.Head % 64) / 16
+}
 
-// func (m *Model) Cursor() int {
-// 	return m.step % pageSize
-// }
+func (m *Model) SetPage(val int) {
+	m.setHead(m.Pattern(), val, m.Trig())
+}
 
-// func (m *Model) StepForCursor(cursor int) int {
-// 	return m.Page()*m.PageSize() + cursor%m.PageSize()
-// }
+func (m *Model) Trig() int {
+	return m.Head % 16
+}
 
-// func (m *Model) CanDecPage() bool {
-// 	return m.step >= pageSize
-// }
+func (m *Model) SetTrig(val int) {
+	m.setHead(m.Pattern(), m.Page(), val)
+}
 
-// func (m *Model) DecPage() {
-// 	if m.CanDecPage() {
-// 		m.step -= pageSize
-// 	}
-// }
+func (m *Model) ClearStep() {
+	if m.State.Is(Viewing, Playing) {
+		m.Seq.Clear(m.Head)
+	}
+}
 
-// func (m *Model) CanIncPage() bool {
-// 	return m.step < maxStep-pageSize
-// }
+func (m *Model) ToggleRecording() {
+	switch m.State {
+	case Viewing:
+		m.State = Recording
+	case Recording:
+		m.State = Viewing
+	}
+}
 
-// func (m *Model) IncPage() {
-// 	if m.CanIncPage() {
-// 		m.step += pageSize
-// 	}
-// }
+func (m *Model) setHead(pattern, page, trig int) {
+	if m.State.Is(Viewing, Recording) {
+		m.Head = clamp(pattern*64+page*16+trig, 0, 8*16*64-1)
+		m.State = Viewing
+	}
+}
 
-// func (m *Model) SetCursor(val int) {
-// 	m.step = m.Page()*m.PageSize() + val%m.PageSize()
-// }
+type State int
 
-// func (m *Model) HasMessage(step int) bool {
-// 	_, ch := m.Digitakt.Pattern(step)
-// 	if ch {
-// 		return true
-// 	}
-// 	_, ch = m.Digitone.Pattern(step)
-// 	if ch {
-// 		return true
-// 	}
-// 	return false
-// }
+const (
+	Viewing State = iota
+	Recording
+	Playing
+)
+
+func (s State) Is(values ...State) bool {
+	for _, val := range values {
+		if s == val {
+			return true
+		}
+	}
+	return false
+}

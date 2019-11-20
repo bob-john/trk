@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
@@ -15,11 +14,10 @@ const (
 )
 
 var (
-	seq      *Seq
+	ui       = new(UI)
+	model    = new(Model)
 	digitakt *Device
 	digitone *Device
-	head     int
-	state    State
 )
 
 func main() {
@@ -31,21 +29,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	seq, err = ReadSeq(os.Args[1])
-	if os.IsNotExist(err) {
-		seq = NewSeq()
-	} else if err != nil {
-		must(err)
-	}
+	err = model.LoadSeq(os.Args[1])
+	must(err)
 
 	err = termbox.Init()
 	must(err)
 	defer termbox.Close()
+	termbox.SetInputMode(termbox.InputCurrent | termbox.InputMouse)
 
 	digitakt, _ = OpenDevice("Digitakt", "Elektron Digitakt", "Elektron Digitakt")
 	digitone, _ = OpenDevice("Digitone", "Elektron Digitone", "Elektron Digitone")
 
-	seq.ConsolidatedRow(0).Play(digitone, digitakt)
+	model.Seq.ConsolidatedRow(0).Play(digitone, digitakt)
 
 	var (
 		eventC = make(chan termbox.Event)
@@ -83,10 +78,7 @@ func main() {
 	)
 	for !done {
 		var (
-			oldHead = head
-			pattern = head / 64
-			page    = (head % 64) / 16
-			trigger = head % 16
+			oldHead = model.Head
 		)
 		select {
 		case e := <-eventC:
@@ -94,99 +86,88 @@ func main() {
 			case termbox.EventKey:
 				switch e.Key {
 				case termbox.KeyCtrlS:
-					err := seq.Write(os.Args[1])
+					err := model.Seq.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
 				case termbox.KeyCtrlX:
-					err := seq.Write(os.Args[1])
+					err := model.Seq.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
 					done = true
 
 				case termbox.KeyArrowRight:
-					if state == Viewing {
-						trigger++
-					}
+					model.SetTrig(model.Trig() + 1)
 				case termbox.KeyArrowLeft:
-					if state == Viewing {
-						trigger--
-					}
+					model.SetTrig(model.Trig() - 1)
 				case termbox.KeyArrowUp:
-					if state == Viewing {
-						trigger -= 8
-					}
+					model.SetTrig(model.Trig() - 8)
 				case termbox.KeyArrowDown:
-					if state == Viewing {
-						trigger += 8
-					}
+					model.SetTrig(model.Trig() + 8)
 				case termbox.KeyPgup:
-					if state == Viewing {
-						pattern--
-					}
+					model.SetPattern(model.Pattern() + 1)
 				case termbox.KeyPgdn:
-					if state == Viewing {
-						pattern++
-					}
+					model.SetPattern(model.Pattern() - 1)
 				case termbox.KeyTab, termbox.KeySpace:
-					if state == Viewing {
-						page++
-					}
+					model.SetPage(model.Page() + 1)
 
 				case termbox.KeyDelete, termbox.KeyBackspace:
-					if state == Viewing || state == Playing {
-						seq.Clear(head)
-					}
+					model.ClearStep()
 				case termbox.KeyEnter:
-					if state == Viewing {
-						state = Recording
-					} else if state == Recording {
-						state = Viewing
-					}
+					model.ToggleRecording()
+				}
+
+			case termbox.EventMouse:
+				switch e.Key {
+				case termbox.MouseWheelUp:
+					model.SetPattern(model.Pattern() + 1)
+				case termbox.MouseWheelDown:
+					model.SetPattern(model.Pattern() - 1)
+
+				case termbox.MouseLeft:
+					ui.Click(e.MouseX, e.MouseY)
 				}
 			}
 
 		case m := <-midiC:
 			switch m.Message {
 			case realtime.TimingClock:
-				if state == Playing {
+				if model.State == Playing {
 					tick++
 				}
 			case realtime.Start:
-				state = Playing
+				model.State = Playing
 				tick = 0
 			case realtime.Continue:
-				state = Playing
+				model.State = Playing
 			case realtime.Stop:
-				state = Viewing
+				model.State = Viewing
 			}
-			if state == Recording {
-				seq.Insert(m.Device.Name(), head, m.Message)
+			if model.State == Recording {
+				model.Seq.Insert(m.Device.Name(), model.Head, m.Message)
 			}
 		}
-		if state == Playing {
+		if model.State == Playing {
 			switch tick {
 			case 12:
-				row := seq.ConsolidatedRow(head + 2)
+				row := model.Seq.ConsolidatedRow(model.Head + 2)
 				row.Digitone.Pattern.Play(digitone, 15)
 				row.Digitakt.Pattern.Play(digitakt, 15)
 
 			case 18:
-				row := seq.ConsolidatedRow(head + 1)
+				row := model.Seq.ConsolidatedRow(model.Head + 1)
 				row.Digitone.Mute.Play(digitone, row.Digitone.Channels)
 				row.Digitakt.Mute.Play(digitakt, row.Digitakt.Channels)
 				row.Digitone.Mute.Play(digitakt, row.Digitone.Channels) //HACK
 
 			case 24:
-				head++
+				model.Head++
 				tick = 0
 			}
 		} else {
-			SetString(0, 8, strconv.Itoa(trigger), termbox.ColorDefault, termbox.ColorDefault)
-			head = clamp(pattern*64+page*16+trigger, 0, 8*16*64-1)
-			if head != oldHead {
-				seq.ConsolidatedRow(head).Play(digitone, digitakt)
+			if model.Head != oldHead {
+				model.Seq.ConsolidatedRow(model.Head).Play(digitone, digitakt)
 			}
 		}
 		render()
@@ -211,7 +192,7 @@ func color(on, ch bool) (fg termbox.Attribute) {
 	if !on {
 		return
 	}
-	switch state {
+	switch model.State {
 	case Playing:
 		fg = termbox.ColorGreen
 	case Recording:
@@ -222,27 +203,25 @@ func color(on, ch bool) (fg termbox.Attribute) {
 }
 
 func render() {
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	row, org := seq.ConsolidatedRow(head), seq.Row(head)
+	ui.Clear()
+	row, org := model.Seq.ConsolidatedRow(model.Head), model.Seq.Row(model.Head)
 	SetString(6, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
 	SetString(6, 1, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
 	SetString(6+row.Digitone.Channels.Len+1, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
 	SetString(6+row.Digitone.Channels.Len+1, 1, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
-	SetString(0, 3, fmt.Sprintf("%s%02d", string('A'+head/64/16), 1+(head/64)%16), termbox.ColorDefault, termbox.ColorDefault)
+	SetString(0, 3, fmt.Sprintf("%s%02d", string('A'+model.Head/64/16), 1+(model.Head/64)%16), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
-		ch := seq.Row(head/16*16 + n).HasChanges(seq.Row(head/16*16 + n - 1))
-		SetString(6+(n%8)*3, 3+n/8, fmt.Sprintf("%02d", 1+n), color(n == head%16, ch), termbox.ColorDefault)
+		n := n
+		ch := model.Seq.Row(model.Head/16*16 + n).HasChanges(model.Seq.Row(model.Head/16*16 + n - 1))
+		ui.Print(6+(n%8)*3, 3+n/8, fmt.Sprintf("%02d", 1+n), color(n == model.Head%16, ch), termbox.ColorDefault, func(x, y int) {
+			model.SetTrig(n)
+		})
 	}
 	for n := 0; n < 4; n++ {
-		SetString(32+n*4, 3, fmt.Sprintf("%d:4", 1+n), color(n == (head%64)/16, false), termbox.ColorDefault)
+		n := n
+		ui.Print(32+n*4, 3, fmt.Sprintf("%d:4", 1+n), color(n == (model.Head%64)/16, false), termbox.ColorDefault, func(x, y int) {
+			model.SetPage(n)
+		})
 	}
-	termbox.Flush()
+	ui.Flush()
 }
-
-type State int
-
-const (
-	Viewing State = iota
-	Recording
-	Playing
-)

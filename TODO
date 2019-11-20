@@ -1,6 +1,7 @@
 + Features
-- Quit recording when moving around (instead of locking)
-- Enable mouse to click the UI, would be more intuitive than the keyboard
+- Add pattern length+scale like on the digitakt, keep the data per actual pattern (PC) - that would require two parameters (one per machine).
+    - Or just global scale? Or nothing for now.
+    - Or add a second device in the UI?
 - Song part?
 - Display help
 
