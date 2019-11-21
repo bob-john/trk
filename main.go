@@ -213,24 +213,17 @@ func color(on, ch bool) (fg termbox.Attribute) {
 func render() {
 	ui.Clear()
 	row, org := model.Seq.ConsolidatedRow(model.Head), model.Seq.Row(model.Head)
-	SetString(6, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
-	SetString(6, 1, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
-	SetString(6+row.Digitone.Channels.Len+1, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
-	SetString(6+row.Digitone.Channels.Len+1, 1, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
-	SetString(0, 3, fmt.Sprintf("%s%02d", string('A'+model.Head/64/16), 1+(model.Head/64)%16), termbox.ColorDefault, termbox.ColorDefault)
-	SetString(4, 3, fmt.Sprintf("%d:4", 1+model.Page()), termbox.ColorDefault, termbox.ColorDefault)
+	SetString(4, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
+	SetString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
+	SetString(8+row.Digitakt.Channels.Len+1, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
+	SetString(12+row.Digitakt.Channels.Len+1, 0, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
+	SetString(0, 2, fmt.Sprintf("%03d", 1+model.Head/16), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		n := n
 		ch := model.HeadForTrig(n) == 0 || model.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Seq.Row(model.HeadForTrig(n-1)))
-		ui.Print(8+(n%8)*3, 3+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault, func(x, y int) {
+		ui.Print(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault, func(x, y int) {
 			model.SetTrig(n)
 		})
 	}
-	// for n := 0; n < 4; n++ {
-	// 	n := n
-	// 	ui.Print(32+n*4, 3, fmt.Sprintf("%d:4", 1+n), color(n == (model.Head%64)/16, false), termbox.ColorDefault, func(x, y int) {
-	// 		model.SetPage(n)
-	// 	})
-	// }
 	ui.Flush()
 }

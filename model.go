@@ -58,7 +58,7 @@ func (m *Model) Trig() int {
 }
 
 func (m *Model) SetTrig(val int) {
-	if val < 0 || val > 15 {
+	if val < -1 || val > 16 {
 		return
 	}
 	m.setHead(m.Pattern(), m.Page(), val)
