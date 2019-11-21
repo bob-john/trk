@@ -1,11 +1,9 @@
 + Bug
 - Should not be able to clear first step
-- Moving around with keyboard is fiddly
 
 + Features
-- Add pattern length+scale like on the digitakt, keep the data per actual pattern (PC) - that would require two parameters (one per machine).
-    - Or just global scale? Or nothing for now.
-    - Or add a second device in the UI?
+- Temp file saved and restored automatically. Ctrl+S to save explicitely. Ctrl+L or R to reload from disk (with confirmation).
+- Add pattern length + global scale.
 - Song part?
 - Display help
 
