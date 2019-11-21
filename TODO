@@ -1,3 +1,14 @@
+TODO
+====
+- Let configure the devices ports, have multiple names (because of the system), maybe have a global configuration?
+    trk devices -- list all the devices on the system
+    trk devices <path> -- list all the devices in the file
+    trk devices add <path> digitakt|digitone [<input-port> <output-port>] <channels> -- could guess from the port name
+    -- add some devices.json to the .trk file.
+
+NEXT
+====
+
 + Bug
 - Should not be able to clear first step
 
