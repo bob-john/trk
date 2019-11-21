@@ -106,19 +106,13 @@ func main() {
 				case termbox.KeyArrowDown:
 					model.SetTrig(model.Trig() + 8)
 				case termbox.KeyPgup:
-					model.SetPage(model.Page() - 1)
-					// model.SetPattern(model.Pattern() + 1)
+					model.SetPattern(model.Pattern() - 1)
 				case termbox.KeyPgdn:
-					model.SetPage(model.Page() + 1)
+					model.SetPattern(model.Pattern() + 1)
 				case termbox.KeyHome:
 					model.SetPattern(0)
-					model.SetPage(0)
 				case termbox.KeyEnd:
 					model.SetPattern(model.LastPattern())
-					model.SetPage(model.LastPage())
-				// model.SetPattern(model.Pattern() - 1)
-				// case termbox.KeyTab, termbox.KeySpace:
-				// 	model.SetPage(model.Page() + 1)
 
 				case termbox.KeyDelete, termbox.KeyBackspace:
 					model.ClearStep()
@@ -217,7 +211,7 @@ func render() {
 	SetString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
 	SetString(8+row.Digitakt.Channels.Len+1, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
 	SetString(12+row.Digitakt.Channels.Len+1, 0, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
-	SetString(0, 2, fmt.Sprintf("%03d", 1+model.Head/16), termbox.ColorDefault, termbox.ColorDefault)
+	SetString(0, 2, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		n := n
 		ch := model.HeadForTrig(n) == 0 || model.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Seq.Row(model.HeadForTrig(n-1)))

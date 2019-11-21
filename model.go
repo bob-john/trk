@@ -20,48 +20,27 @@ func (m *Model) LoadSeq(path string) error {
 }
 
 func (m *Model) HeadForTrig(val int) int {
-	return m.makeHead(m.Pattern(), m.Page(), val)
+	return m.makeHead(m.Pattern(), val)
 }
 
 func (m *Model) Pattern() int {
-	return m.Head / 64
-}
-
-func (m *Model) SetPattern(val int) {
-	m.setHead(val, m.Page(), m.Trig())
-}
-
-func (m *Model) Page() int {
-	return (m.Head % 64) / 16
-}
-
-func (m *Model) SetPage(val int) {
-	if m.Pattern() == 0 && val < 0 {
-		return
-	}
-	if m.Pattern() == m.LastPattern() && val > 3 {
-		return
-	}
-	m.setHead(m.Pattern(), val, m.Trig())
-}
-
-func (m *Model) LastPattern() int {
-	return 8*16 - 1
-}
-
-func (m *Model) LastPage() int {
-	return 4 - 1
+	return m.Head / 16
 }
 
 func (m *Model) Trig() int {
 	return m.Head % 16
 }
 
+func (m *Model) SetPattern(val int) {
+	m.setHead(clamp(val, 0, m.LastPattern()), m.Trig())
+}
+
 func (m *Model) SetTrig(val int) {
-	if val < -1 || val > 16 {
-		return
-	}
-	m.setHead(m.Pattern(), m.Page(), val)
+	m.setHead(m.Pattern(), clamp(val, 0, 16-1))
+}
+
+func (m *Model) LastPattern() int {
+	return 512 - 1
 }
 
 func (m *Model) ClearStep() {
@@ -79,15 +58,15 @@ func (m *Model) ToggleRecording() {
 	}
 }
 
-func (m *Model) setHead(pattern, page, trig int) {
+func (m *Model) setHead(pattern, trig int) {
 	if m.State.Is(Viewing, Recording) {
-		m.Head = m.makeHead(pattern, page, trig)
+		m.Head = m.makeHead(pattern, trig)
 		m.State = Viewing
 	}
 }
 
-func (m *Model) makeHead(pattern, page, trig int) int {
-	return clamp(pattern*64+page*16+trig, 0, 8*16*64-1)
+func (m *Model) makeHead(pattern, trig int) int {
+	return clamp(pattern*16+trig, 0, 512*16-1)
 }
 
 type State int
