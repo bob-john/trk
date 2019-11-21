@@ -19,24 +19,34 @@ func (m *Model) LoadSeq(path string) error {
 	return nil
 }
 
-func (m *Model) HeadForTrig(val int) int {
-	return m.makeHead(m.Pattern(), val)
-}
-
 func (m *Model) Pattern() int {
 	return m.Head / 16
 }
 
-func (m *Model) Trig() int {
-	return m.Head % 16
-}
-
 func (m *Model) SetPattern(val int) {
-	m.setHead(clamp(val, 0, m.LastPattern()), m.Trig())
+	m.setHead(clamp(val, 0, m.LastPattern()), m.X(), m.Y())
 }
 
-func (m *Model) SetTrig(val int) {
-	m.setHead(m.Pattern(), clamp(val, 0, 16-1))
+func (m *Model) X() int {
+	return (m.Head % 16) % 8
+}
+
+func (m *Model) SetX(val int) {
+	m.setHead(m.Pattern(), val, m.Y())
+}
+
+func (m *Model) Y() int {
+	return (m.Head % 16) / 8
+}
+
+func (m *Model) SetY(val int) {
+	if m.Pattern() == 0 && m.Y() == 0 && val < 0 {
+		return
+	}
+	if m.Pattern() == m.LastPattern() && m.Y() == 1 && val > 1 {
+		return
+	}
+	m.setHead(m.Pattern(), m.X(), val)
 }
 
 func (m *Model) LastPattern() int {
@@ -58,15 +68,23 @@ func (m *Model) ToggleRecording() {
 	}
 }
 
-func (m *Model) setHead(pattern, trig int) {
+func (m *Model) HeadForTrig(val int) int {
+	return m.makeHead(m.Pattern(), val%8, val/8)
+}
+
+func (m *Model) SetTrig(val int) {
+	m.setHead(m.Pattern(), val%8, val/8)
+}
+
+func (m *Model) setHead(pattern, x, y int) {
 	if m.State.Is(Viewing, Recording) {
-		m.Head = m.makeHead(pattern, trig)
+		m.Head = m.makeHead(pattern, x, y)
 		m.State = Viewing
 	}
 }
 
-func (m *Model) makeHead(pattern, trig int) int {
-	return clamp(pattern*16+trig, 0, 512*16-1)
+func (m *Model) makeHead(pattern, x, y int) int {
+	return clamp(pattern*16+y*8+x, 0, 512*16-1)
 }
 
 type State int

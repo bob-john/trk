@@ -97,22 +97,23 @@ func main() {
 					}
 					done = true
 
-				case termbox.KeyArrowRight:
-					model.SetTrig(model.Trig() + 1)
-				case termbox.KeyArrowLeft:
-					model.SetTrig(model.Trig() - 1)
-				case termbox.KeyArrowUp:
-					model.SetTrig(model.Trig() - 8)
-				case termbox.KeyArrowDown:
-					model.SetTrig(model.Trig() + 8)
 				case termbox.KeyPgup:
 					model.SetPattern(model.Pattern() - 1)
-				case termbox.KeyPgdn:
-					model.SetPattern(model.Pattern() + 1)
 				case termbox.KeyHome:
 					model.SetPattern(0)
 				case termbox.KeyEnd:
 					model.SetPattern(model.LastPattern())
+
+				case termbox.KeyArrowRight:
+					model.SetX(model.X() + 1)
+				case termbox.KeyArrowLeft:
+					model.SetX(model.X() - 1)
+				case termbox.KeyArrowDown:
+					model.SetY(model.Y() + 1)
+				case termbox.KeyArrowUp:
+					model.SetY(model.Y() - 1)
+				case termbox.KeyPgdn:
+					model.SetPattern(model.Pattern() + 1)
 
 				case termbox.KeyDelete, termbox.KeyBackspace:
 					model.ClearStep()
