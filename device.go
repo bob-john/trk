@@ -9,6 +9,8 @@ import (
 	"gitlab.com/gomidi/midi/mid"
 )
 
+var driver, _ = NewDriver()
+
 type Device struct {
 	name string
 	*Input
@@ -42,7 +44,7 @@ type Input struct {
 }
 
 func OpenInput(name string) (*Input, error) {
-	in, err := mid.OpenIn(midiDriver{}, -1, name)
+	in, err := mid.OpenIn(driver, -1, name)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +97,7 @@ type Output struct {
 }
 
 func OpenOutput(name string) (*Output, error) {
-	out, err := mid.OpenOut(midiDriver{}, -1, name)
+	out, err := mid.OpenOut(driver, -1, name)
 	if err != nil {
 		return nil, err
 	}

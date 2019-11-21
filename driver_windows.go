@@ -1,17 +1,20 @@
 package main
 
-import (
-	"gitlab.com/gomidi/midi/mid"
+// #cgo LDFLAGS: -lwinmm
+// #include <windows.h>
+import "C"
 
-	// #cgo LDFLAGS: -lwinmm
-	// #include <windows.h>
-	"C"
-)
 import (
 	"fmt"
 	"syscall"
 	"unsafe"
+
+	"gitlab.com/gomidi/midi/mid"
 )
+
+func NewDriver() (mid.Driver, error) {
+	return &midiDriver{}, nil
+}
 
 var (
 	midiInListeners = make(map[int]func(data []byte, deltaMicroseconds int64))

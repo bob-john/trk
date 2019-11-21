@@ -1,21 +1,10 @@
 package main
 
-import "gitlab.com/gomidi/midi/mid"
+import (
+	"gitlab.com/gomidi/midi/mid"
+	"gitlab.com/gomidi/rtmididrv"
+)
 
-type midiDriver struct{}
-
-func (d midiDriver) Ins() ([]mid.In, error) {
-	return nil, nil
-}
-
-func (d midiDriver) Outs() ([]mid.Out, error) {
-	return nil, nil
-}
-
-func (d midiDriver) String() string {
-	return "Stub Linux MIDI driver"
-}
-
-func (d midiDriver) Close() error {
-	return nil
+func NewDriver() (mid.Driver, error) {
+	return rtmididrv.New()
 }
