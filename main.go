@@ -21,15 +21,55 @@ var (
 )
 
 func main() {
-	var err error
-
-	if len(os.Args) != 2 {
-		fmt.Println("usage: trk <path> [<device> ...]")
-		fmt.Println("trk: invalid command line")
+	if len(os.Args) == 1 {
+		fmt.Println("trk: missing command, try 'trk help'")
 		os.Exit(1)
 	}
+	switch os.Args[1] {
+	case "ls":
+		ls()
 
-	err = model.LoadSeq(os.Args[1])
+	case "open":
+		open(os.Args[2])
+
+	case "help":
+		usage()
+
+	default:
+		usage()
+		fmt.Println("trk: invalid command, try 'trk help'")
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+func usage() {
+	fmt.Println("usage: trk <cmd> [<arg>...]")
+	fmt.Println()
+	fmt.Println("COMMANDS")
+	fmt.Println("   trk ls -- list available MIDI ports")
+	fmt.Println("   trk open <path> -- open <path> to play and edit")
+	fmt.Println("   trk help -- display this help page")
+	fmt.Println()
+}
+
+func ls() {
+	inputs, err := driver.Ins()
+	must(err)
+	fmt.Println("MIDI Inputs:")
+	for _, port := range inputs {
+		fmt.Printf("- [%d] %s\n", port.Number(), port.String())
+	}
+	outputs, err := driver.Outs()
+	must(err)
+	fmt.Println("MIDI Outputs:")
+	for _, port := range outputs {
+		fmt.Printf("- [%d] %s\n", port.Number(), port.String())
+	}
+}
+
+func open(name string) {
+	err := model.LoadSeq(name)
 	must(err)
 
 	err = termbox.Init()
@@ -86,12 +126,12 @@ func main() {
 			case termbox.EventKey:
 				switch e.Key {
 				case termbox.KeyCtrlS:
-					err := model.Seq.Write(os.Args[1])
+					err := model.Seq.Write(name)
 					if err != nil {
 						log.Fatal(err)
 					}
 				case termbox.KeyCtrlX:
-					err := model.Seq.Write(os.Args[1])
+					err := model.Seq.Write(name)
 					if err != nil {
 						log.Fatal(err)
 					}
