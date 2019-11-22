@@ -7,10 +7,7 @@ import (
 
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
-)
-
-const (
-	pageSize = 16
+	"github.com/sqweek/dialog"
 )
 
 var (
@@ -21,64 +18,18 @@ var (
 )
 
 func main() {
-	if len(os.Args) == 1 {
-		fmt.Println("trk: missing command, try 'trk help'")
+	if len(os.Args) != 2 {
+		fmt.Println("usage: trk <path>")
+		fmt.Println("trk: invalid command")
 		os.Exit(1)
 	}
-	switch os.Args[1] {
-	case "ls":
-		ls()
 
-	case "open":
-		open(os.Args[2])
-
-	case "help":
-		usage()
-
-	default:
-		usage()
-		fmt.Println("trk: invalid command, try 'trk help'")
-		os.Exit(1)
-	}
-	os.Exit(0)
-}
-
-func usage() {
-	fmt.Println("usage: trk <cmd> [<arg>...]")
-	fmt.Println()
-	fmt.Println("COMMANDS")
-	fmt.Println("   trk open <path> -- open the track at <path> to edit and play, <path> must exist")
-	fmt.Println("   trk create <path> -- create a new track at <path>, <path> must not exist")
-	fmt.Println("   trk ls -- list available MIDI ports")
-	fmt.Println("   trk add dn|dt [<input> <output>] <channels> <path> -- add or replace a device in the track at <path>")
-	fmt.Println("   trk rm dn|dt -- remove a device from the track at <path>")
-	fmt.Println("   trk help -- display this help page")
-	fmt.Println()
-}
-
-func ls() {
-	inputs, err := driver.Ins()
-	must(err)
-	fmt.Println("MIDI Inputs:")
-	for _, port := range inputs {
-		fmt.Printf("- [%d] %s\n", port.Number(), port.String())
-	}
-	outputs, err := driver.Outs()
-	must(err)
-	fmt.Println("MIDI Outputs:")
-	for _, port := range outputs {
-		fmt.Printf("- [%d] %s\n", port.Number(), port.String())
-	}
-}
-
-func open(name string) {
-	err := model.LoadSeq(name)
+	err := model.LoadSeq(os.Args[1])
 	must(err)
 
 	err = termbox.Init()
 	must(err)
 	defer termbox.Close()
-	termbox.SetInputMode(termbox.InputCurrent | termbox.InputMouse)
 
 	digitakt, _ = OpenDevice("Digitakt", "Elektron Digitakt", "Elektron Digitakt")
 	digitone, _ = OpenDevice("Digitone", "Elektron Digitone", "Elektron Digitone")
@@ -129,12 +80,12 @@ func open(name string) {
 			case termbox.EventKey:
 				switch e.Key {
 				case termbox.KeyCtrlS:
-					err := model.Seq.Write(name)
+					err := model.Seq.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
 				case termbox.KeyCtrlX:
-					err := model.Seq.Write(name)
+					err := model.Seq.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -161,7 +112,11 @@ func open(name string) {
 				case termbox.KeyDelete, termbox.KeyBackspace:
 					model.ClearStep()
 				case termbox.KeyEnter:
-					model.ToggleRecording()
+					// model.ToggleRecording()
+					ok := dialog.Message("%s", "Do you want to continue?").Title("Are you sure?").YesNo()
+					if ok {
+						model.ToggleRecording()
+					}
 				}
 
 			case termbox.EventMouse:
@@ -263,5 +218,7 @@ func render() {
 			model.SetTrig(n)
 		})
 	}
+	d := &Dialog{Box{5, 5, 20, 5}, []string{"Digitakt >", "Digitone >"}}
+	d.Render()
 	ui.Flush()
 }
