@@ -7,12 +7,11 @@ import (
 
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
-	"github.com/sqweek/dialog"
 )
 
 var (
-	ui       = new(UI)
 	model    = new(Model)
+	dialog   *Dialog
 	digitakt *Device
 	digitone *Device
 )
@@ -76,15 +75,29 @@ func main() {
 		)
 		select {
 		case e := <-eventC:
+			if dialog != nil {
+				if dialog.Handle(e) {
+					dialog = nil
+				}
+				break
+			}
 			switch e.Type {
 			case termbox.EventKey:
 				switch e.Key {
+				case termbox.KeyCtrlO:
+					var items []SettingsItem
+					ins, _ := driver.Outs()
+					for _, in := range ins {
+						items = append(items, &Checkbox{in.String(), false})
+					}
+					dialog = NewDialog(5, 5, 30, 3, &Settings{"Digitakt Output", items})
+
 				case termbox.KeyCtrlS:
 					err := model.Seq.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
-				case termbox.KeyCtrlX:
+				case termbox.KeyEsc:
 					err := model.Seq.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
@@ -112,22 +125,7 @@ func main() {
 				case termbox.KeyDelete, termbox.KeyBackspace:
 					model.ClearStep()
 				case termbox.KeyEnter:
-					// model.ToggleRecording()
-					ok := dialog.Message("%s", "Do you want to continue?").Title("Are you sure?").YesNo()
-					if ok {
-						model.ToggleRecording()
-					}
-				}
-
-			case termbox.EventMouse:
-				switch e.Key {
-				case termbox.MouseWheelUp:
-					model.SetPattern(model.Pattern() + 1)
-				case termbox.MouseWheelDown:
-					model.SetPattern(model.Pattern() - 1)
-
-				case termbox.MouseLeft:
-					ui.Click(e.MouseX, e.MouseY)
+					model.ToggleRecording()
 				}
 			}
 
@@ -204,7 +202,7 @@ func color(on, ch bool) (fg termbox.Attribute) {
 }
 
 func render() {
-	ui.Clear()
+	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	row, org := model.Seq.ConsolidatedRow(model.Head), model.Seq.Row(model.Head)
 	SetString(4, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
 	SetString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
@@ -214,11 +212,10 @@ func render() {
 	for n := 0; n < 16; n++ {
 		n := n
 		ch := model.HeadForTrig(n) == 0 || model.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Seq.Row(model.HeadForTrig(n-1)))
-		ui.Print(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault, func(x, y int) {
-			model.SetTrig(n)
-		})
+		SetString(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
 	}
-	d := &Dialog{Box{5, 5, 20, 5}, []string{"Digitakt >", "Digitone >"}}
-	d.Render()
-	ui.Flush()
+	if dialog != nil {
+		dialog.Render()
+	}
+	termbox.Flush()
 }

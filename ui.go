@@ -4,60 +4,42 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-type UI struct {
-	views []View
-}
-
-func (ui *UI) Clear() {
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	ui.views = nil
-}
-
-func (ui *UI) Print(x, y int, text string, fg, bg termbox.Attribute, onClick func(x, y int)) {
-	SetString(x, y, text, fg, bg)
-	ui.views = append(ui.views, View{x, y, len(text), 1, onClick})
-}
-
-func (ui *UI) Click(x, y int) {
-	for _, v := range ui.views {
-		if v.Hit(x, y) && v.OnClick != nil {
-			v.OnClick(x-v.X, y-v.Y)
-		}
-	}
-}
-
-func (ui *UI) Flush() {
-	termbox.Flush()
-}
-
-type View struct {
-	X, Y          int
-	Width, Height int
-	OnClick       func(x, y int)
-}
-
-func (v View) Hit(x, y int) bool {
-	return x >= v.X && y >= v.Y && x <= v.X+v.Width && y <= v.Y+v.Height
-}
-
 type Box struct {
-	X, Y, Width, Height int
+	x, y, width, height int
+}
+
+func MakeBox(x, y, width, height int) Box {
+	if width < 0 {
+		x, width = x+width, -width
+	}
+	if height < 0 {
+		y, height = y+height, -height
+	}
+	return Box{x, y, width, height}
 }
 
 func (b Box) Left() int {
-	return b.X
+	return b.x
 }
 
 func (b Box) Right() int {
-	return b.X + b.Width
+	return b.x + b.width
 }
 
 func (b Box) Top() int {
-	return b.Y
+	return b.y
 }
 
 func (b Box) Bottom() int {
-	return b.Y + b.Height
+	return b.y + b.height
+}
+
+func (b Box) Width() int {
+	return b.width
+}
+
+func (b Box) Height() int {
+	return b.height
 }
 
 func (b Box) Render() {
@@ -79,12 +61,42 @@ func (b Box) Render() {
 
 type Dialog struct {
 	Box
-	Items []string
+	model        *Settings
+	selectedItem int
+}
+
+func NewDialog(x, y, width, height int, model *Settings) *Dialog {
+	return &Dialog{MakeBox(x, y, width, height), model, 0}
+}
+
+func (d *Dialog) Handle(e termbox.Event) bool {
+	if e.Type != termbox.EventKey {
+		return false
+	}
+	switch e.Key {
+	case termbox.KeyEsc:
+		return true
+
+	case termbox.KeyArrowDown:
+		d.selectedItem++
+	case termbox.KeyArrowUp:
+		d.selectedItem--
+
+	default:
+		d.model.Items[d.selectedItem].Handle(e)
+	}
+	d.selectedItem = clamp(d.selectedItem, 0, len(d.model.Items)-1)
+	return false
 }
 
 func (d *Dialog) Render() {
-	for n, item := range d.Items {
-		SetString(d.Left()+1, d.Top()+1+n, item, termbox.ColorDefault, termbox.ColorDefault)
-	}
 	d.Box.Render()
+	SetString(d.Left()+1, d.Top(), " "+d.model.Title+" ", termbox.ColorDefault, termbox.ColorDefault)
+	for n, item := range d.model.Items {
+		fg, bg := termbox.ColorDefault, termbox.ColorDefault
+		if n == d.selectedItem {
+			fg = fg | termbox.AttrReverse
+		}
+		SetString(d.Left()+1, d.Top()+1+n, item.String(d.Width()), fg, bg)
+	}
 }
