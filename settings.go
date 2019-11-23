@@ -48,7 +48,7 @@ type menuItem struct {
 }
 
 func (m *menuItem) Handle(dialog *Dialog, e termbox.Event) {
-	if IsKey(e, termbox.KeyArrowRight) {
+	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		dialog.Enter(m.page)
 	}
 }
@@ -67,7 +67,7 @@ type checkboxItem struct {
 }
 
 func (c *checkboxItem) Handle(dialog *Dialog, e termbox.Event) {
-	if IsKey(e, termbox.KeyArrowRight) {
+	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		c.on = !c.on
 	}
 }

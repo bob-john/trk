@@ -114,7 +114,7 @@ func (d *Dialog) Handle(ui *UI, e termbox.Event) bool {
 		d.selectedItem++
 	case termbox.KeyArrowUp:
 		d.selectedItem--
-	case termbox.KeyArrowLeft:
+	case termbox.KeyArrowLeft, termbox.KeyBackspace:
 		if len(d.stack) > 1 {
 			d.Back()
 		} else {
