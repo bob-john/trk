@@ -10,8 +10,8 @@ import (
 )
 
 var (
+	ui       = NewUI()
 	model    = new(Model)
-	dialog   *Dialog
 	digitakt *Device
 	digitone *Device
 )
@@ -75,22 +75,14 @@ func main() {
 		)
 		select {
 		case e := <-eventC:
-			if dialog != nil {
-				if dialog.Handle(e) {
-					dialog = nil
-				}
+			if ui.Handle(e) {
 				break
 			}
 			switch e.Type {
 			case termbox.EventKey:
 				switch e.Key {
 				case termbox.KeyCtrlO:
-					var items []SettingsItem
-					ins, _ := driver.Outs()
-					for _, in := range ins {
-						items = append(items, &Checkbox{in.String(), false})
-					}
-					dialog = NewDialog(5, 5, 30, 3, &Settings{"Digitakt Output", items})
+					ui.Show(NewDialog(5, 5, settings()))
 
 				case termbox.KeyCtrlS:
 					err := model.Seq.Write(os.Args[1])
@@ -122,7 +114,7 @@ func main() {
 				case termbox.KeyPgdn:
 					model.SetPattern(model.Pattern() + 1)
 
-				case termbox.KeyDelete, termbox.KeyBackspace:
+				case termbox.KeyDelete:
 					model.ClearStep()
 				case termbox.KeyEnter:
 					model.ToggleRecording()
@@ -204,18 +196,51 @@ func color(on, ch bool) (fg termbox.Attribute) {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	row, org := model.Seq.ConsolidatedRow(model.Head), model.Seq.Row(model.Head)
-	SetString(4, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
-	SetString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
-	SetString(8+row.Digitakt.Channels.Len+1, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
-	SetString(12+row.Digitakt.Channels.Len+1, 0, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
-	SetString(0, 2, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
+	DrawString(4, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
+	DrawString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
+	DrawString(8+row.Digitakt.Channels.Len+1, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
+	DrawString(12+row.Digitakt.Channels.Len+1, 0, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
+	DrawString(0, 2, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		n := n
 		ch := model.HeadForTrig(n) == 0 || model.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Seq.Row(model.HeadForTrig(n-1)))
-		SetString(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
+		DrawString(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
 	}
-	if dialog != nil {
-		dialog.Render()
-	}
+	ui.Render()
 	termbox.Flush()
+}
+
+func settings() *Settings {
+	var (
+		inputs, _  = driver.Ins()
+		outputs, _ = driver.Outs()
+	)
+	addInputs := func(p *Settings) {
+		for _, port := range inputs {
+			p.AddCheckbox(port.String(), false)
+		}
+	}
+	addOutputs := func(p *Settings) {
+		for _, port := range outputs {
+			p.AddCheckbox(port.String(), false)
+		}
+	}
+	settings := NewSettings("Devices")
+	settings.AddMenu("Digitakt", func(page *Settings) {
+		page.AddMenu("In", func(page *Settings) {
+			addInputs(page)
+		})
+		page.AddMenu("Out", func(page *Settings) {
+			addOutputs(page)
+		})
+	})
+	settings.AddMenu("Digitone", func(page *Settings) {
+		page.AddMenu("In", func(page *Settings) {
+			addInputs(page)
+		})
+		page.AddMenu("Out", func(page *Settings) {
+			addOutputs(page)
+		})
+	})
+	return settings
 }

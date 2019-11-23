@@ -1,75 +1,108 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/nsf/termbox-go"
 )
 
-type Box struct {
-	x, y, width, height int
+type UI struct {
+	dialog *Dialog
 }
 
-func MakeBox(x, y, width, height int) Box {
+type Size struct {
+	Width, Height int
+}
+
+func MakeSize(width, height int) Size {
 	if width < 0 {
-		x, width = x+width, -width
+		width = -width
 	}
 	if height < 0 {
-		y, height = y+height, -height
+		height = -height
 	}
-	return Box{x, y, width, height}
+	return Size{width, height}
 }
 
-func (b Box) Left() int {
-	return b.x
-}
-
-func (b Box) Right() int {
-	return b.x + b.width
-}
-
-func (b Box) Top() int {
-	return b.y
-}
-
-func (b Box) Bottom() int {
-	return b.y + b.height
-}
-
-func (b Box) Width() int {
-	return b.width
-}
-
-func (b Box) Height() int {
-	return b.height
-}
-
-func (b Box) Render() {
-	x0, x1, y0, y1 := b.Left(), b.Right(), b.Top(), b.Bottom()
-	fg, bg := termbox.ColorDefault, termbox.ColorDefault
-	for x := x0; x < x1; x++ {
-		termbox.SetCell(x, y0, '─', fg, bg)
-		termbox.SetCell(x, y1, '─', fg, bg)
+func (s Size) Union(o Size) Size {
+	u := s
+	if u.Width < o.Width {
+		u.Width = o.Width
 	}
-	for y := y0; y < y1; y++ {
-		termbox.SetCell(x0, y, '│', fg, bg)
-		termbox.SetCell(x1, y, '│', fg, bg)
+	if u.Height < o.Height {
+		u.Height = o.Height
 	}
-	termbox.SetCell(x0, y0, '┌', fg, bg)
-	termbox.SetCell(x1, y0, '┐', fg, bg)
-	termbox.SetCell(x0, y1, '└', fg, bg)
-	termbox.SetCell(x1, y1, '┘', fg, bg)
+	return u
+}
+
+func NewUI() *UI {
+	return new(UI)
+}
+
+func (ui *UI) Show(dialog *Dialog) {
+	ui.dialog = dialog
+}
+
+func (ui *UI) Dismiss() {
+	ui.dialog = nil
+}
+
+func (ui *UI) Handle(e termbox.Event) bool {
+	if ui.dialog == nil {
+		return false
+	}
+	if IsKey(e, termbox.KeyEsc) {
+		ui.Dismiss()
+	} else if ui.dialog != nil {
+		ui.dialog.Handle(ui, e)
+	}
+	return true
+}
+
+func (ui *UI) Render() {
+	if ui.dialog != nil {
+		ui.dialog.Render()
+	}
 }
 
 type Dialog struct {
-	Box
-	model        *Settings
+	x, y         int
+	stack        []*Settings
 	selectedItem int
 }
 
-func NewDialog(x, y, width, height int, model *Settings) *Dialog {
-	return &Dialog{MakeBox(x, y, width, height), model, 0}
+func NewDialog(x, y int, model *Settings) *Dialog {
+	return &Dialog{x, y, []*Settings{model}, 0}
 }
 
-func (d *Dialog) Handle(e termbox.Event) bool {
+func (d *Dialog) Page() *Settings {
+	return d.stack[len(d.stack)-1]
+}
+
+func (d *Dialog) Breadcrumb() string {
+	if len(d.stack) < 2 {
+		return d.Page().Title
+	}
+	var titles []string
+	for _, page := range d.stack[len(d.stack)-2:] {
+		titles = append(titles, page.Title)
+	}
+	return strings.Join(titles, " > ")
+}
+
+func (d *Dialog) Enter(page *Settings) {
+	d.stack = append(d.stack, page)
+	d.selectedItem = 0 //TODO stack to restore in Back()
+}
+
+func (d *Dialog) Back() {
+	if len(d.stack) > 1 {
+		d.stack = d.stack[:len(d.stack)-1]
+		d.selectedItem = 0
+	}
+}
+
+func (d *Dialog) Handle(ui *UI, e termbox.Event) bool {
 	if e.Type != termbox.EventKey {
 		return false
 	}
@@ -81,22 +114,31 @@ func (d *Dialog) Handle(e termbox.Event) bool {
 		d.selectedItem++
 	case termbox.KeyArrowUp:
 		d.selectedItem--
+	case termbox.KeyArrowLeft:
+		if len(d.stack) > 1 {
+			d.Back()
+		} else {
+			ui.Dismiss()
+		}
 
 	default:
-		d.model.Items[d.selectedItem].Handle(e)
+		d.Page().Items[d.selectedItem].Handle(d, e)
 	}
-	d.selectedItem = clamp(d.selectedItem, 0, len(d.model.Items)-1)
+	d.selectedItem = clamp(d.selectedItem, 0, len(d.Page().Items)-1)
 	return false
 }
 
 func (d *Dialog) Render() {
-	d.Box.Render()
-	SetString(d.Left()+1, d.Top(), " "+d.model.Title+" ", termbox.ColorDefault, termbox.ColorDefault)
-	for n, item := range d.model.Items {
+	page := d.Page()
+	title := d.Breadcrumb()
+	sz := page.PreferredSize().Union(MakeSize(len(title)+4, 0))
+	DrawBox(d.x, d.y, d.x+sz.Width, d.y+sz.Height, termbox.ColorDefault, termbox.ColorDefault)
+	DrawString(d.x+1, d.y, " "+title+" ", termbox.ColorDefault, termbox.ColorDefault)
+	for n, item := range page.Items {
 		fg, bg := termbox.ColorDefault, termbox.ColorDefault
 		if n == d.selectedItem {
 			fg = fg | termbox.AttrReverse
 		}
-		SetString(d.Left()+1, d.Top()+1+n, item.String(d.Width()), fg, bg)
+		DrawString(d.x+1, d.y+1+n, item.String(sz.Width), fg, bg)
 	}
 }

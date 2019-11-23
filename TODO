@@ -1,5 +1,16 @@
-TODO
-====
+IN PROGRESS
+===========
+- Checkbox group (for input/output)
+- Write/load settings from file :-)
+
+- Fix Back should restore selectedItem - this will be fixed with the refactoring (if the ListView instance handles the selectedItem!)
+
+- Refactor:
+    - menuItem -> View interface
+    - Settings -> ListView
+    - Up/Down should be handled in ListView, not in Dialog (Dialog is only a container for a stack of views)
+    - etc.
+
 - Let configure the devices ports, have multiple names (because of the system), maybe have a global configuration?
     trk devices -- list all the devices on the system
     trk devices <path> -- list all the devices in the file
@@ -8,7 +19,6 @@ TODO
 
 NEXT
 ====
-
 + Bug
 - Should not be able to clear first step
 
