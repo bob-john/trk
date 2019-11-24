@@ -10,31 +10,6 @@ type UI struct {
 	dialog *Dialog
 }
 
-type Size struct {
-	Width, Height int
-}
-
-func MakeSize(width, height int) Size {
-	if width < 0 {
-		width = -width
-	}
-	if height < 0 {
-		height = -height
-	}
-	return Size{width, height}
-}
-
-func (s Size) Union(o Size) Size {
-	u := s
-	if u.Width < o.Width {
-		u.Width = o.Width
-	}
-	if u.Height < o.Height {
-		u.Height = o.Height
-	}
-	return u
-}
-
 func NewUI() *UI {
 	return new(UI)
 }
@@ -66,66 +41,57 @@ func (ui *UI) Render() {
 }
 
 type Dialog struct {
-	x, y         int
-	stack        []*Settings
-	selectedItem int
+	x, y  int
+	stack []*OptionPage
 }
 
-func NewDialog(x, y int, model *Settings) *Dialog {
-	return &Dialog{x, y, []*Settings{model}, 0}
+func NewDialog(x, y int, model *OptionPage) *Dialog {
+	return &Dialog{x, y, []*OptionPage{model}}
 }
 
-func (d *Dialog) Page() *Settings {
+func (d *Dialog) Page() *OptionPage {
 	return d.stack[len(d.stack)-1]
 }
 
 func (d *Dialog) Breadcrumb() string {
 	if len(d.stack) < 2 {
-		return d.Page().Title
+		return d.Page().title
 	}
 	var titles []string
 	for _, page := range d.stack[len(d.stack)-2:] {
-		titles = append(titles, page.Title)
+		titles = append(titles, page.title)
 	}
 	return strings.Join(titles, " > ")
 }
 
-func (d *Dialog) Enter(page *Settings) {
+func (d *Dialog) Enter(page *OptionPage) {
 	d.stack = append(d.stack, page)
-	d.selectedItem = 0 //TODO stack to restore in Back()
+	page.selectedItem = 0 //HACK
 }
 
 func (d *Dialog) Back() {
 	if len(d.stack) > 1 {
 		d.stack = d.stack[:len(d.stack)-1]
-		d.selectedItem = 0
 	}
 }
 
-func (d *Dialog) Handle(ui *UI, e termbox.Event) bool {
+func (d *Dialog) Handle(ui *UI, e termbox.Event) {
 	if e.Type != termbox.EventKey {
-		return false
+		return
 	}
 	switch e.Key {
 	case termbox.KeyEsc:
-		return true
-
-	case termbox.KeyArrowDown:
-		d.selectedItem++
-	case termbox.KeyArrowUp:
-		d.selectedItem--
+		ui.Dismiss()
 	case termbox.KeyArrowLeft, termbox.KeyBackspace:
 		if len(d.stack) > 1 {
 			d.Back()
 		} else {
 			ui.Dismiss()
 		}
-
 	default:
-		d.Page().Items[d.selectedItem].Handle(d, e)
+		d.Page().Handle(d, e)
 	}
-	d.selectedItem = clamp(d.selectedItem, 0, len(d.Page().Items)-1)
-	return false
+	return
 }
 
 func (d *Dialog) Render() {
@@ -134,37 +100,32 @@ func (d *Dialog) Render() {
 	sz := page.PreferredSize().Union(MakeSize(len(title)+4, 0))
 	DrawBox(d.x, d.y, d.x+sz.Width, d.y+sz.Height, termbox.ColorDefault, termbox.ColorDefault)
 	DrawString(d.x+1, d.y, " "+title+" ", termbox.ColorDefault, termbox.ColorDefault)
-	for n, item := range page.Items {
-		fg, bg := termbox.ColorDefault, termbox.ColorDefault
-		if n == d.selectedItem {
-			fg = fg | termbox.AttrReverse
-		}
-		DrawString(d.x+1, d.y+1+n, item.String(sz.Width), fg, bg)
-	}
+	page.Render(d.x+1, d.y+1, sz.Width)
 }
 
-type Settings struct {
-	Title string
-	Items []settingsItem
+type OptionPage struct {
+	title        string
+	items        []OptionItem
+	selectedItem int
 }
 
-func NewSettings(title string) *Settings {
-	return &Settings{title, nil}
+func NewOptionPage(title string) *OptionPage {
+	return &OptionPage{title, nil, 0}
 }
 
-func (s *Settings) AddMenu(title string, build func(page *Settings)) {
-	page := &Settings{title, nil}
-	s.Items = append(s.Items, &menuItem{title, page})
+func (p *OptionPage) AddMenu(title string, build func(page *OptionPage)) {
+	page := &OptionPage{title, nil, 0}
+	p.items = append(p.items, &Menu{title, page})
 	build(page)
 }
 
-func (s *Settings) AddCheckbox(title string, on bool) {
-	s.Items = append(s.Items, &checkboxItem{title, on})
+func (p *OptionPage) AddCheckbox(title string, on bool) {
+	p.items = append(p.items, &Checkbox{title, on})
 }
 
-func (s *Settings) PreferredSize() Size {
-	sz := MakeSize(len(s.Title)+4, len(s.Items)+1)
-	for _, item := range s.Items {
+func (p *OptionPage) PreferredSize() Size {
+	sz := MakeSize(len(p.title)+4, len(p.items)+1)
+	for _, item := range p.items {
 		minWidth := item.MinWidth() + 2
 		if sz.Width < minWidth {
 			sz.Width = minWidth
@@ -173,43 +134,68 @@ func (s *Settings) PreferredSize() Size {
 	return sz
 }
 
-type settingsItem interface {
+func (p *OptionPage) Handle(d *Dialog, e termbox.Event) {
+	if e.Type != termbox.EventKey {
+		return
+	}
+	switch e.Key {
+	case termbox.KeyArrowDown:
+		p.selectedItem++
+	case termbox.KeyArrowUp:
+		p.selectedItem--
+	default:
+		p.items[p.selectedItem].Handle(d, e)
+	}
+	p.selectedItem = clamp(p.selectedItem, 0, len(p.items)-1)
+}
+
+func (p *OptionPage) Render(x, y, width int) {
+	for n, item := range p.items {
+		fg, bg := termbox.ColorDefault, termbox.ColorDefault
+		if n == p.selectedItem {
+			fg = fg | termbox.AttrReverse
+		}
+		DrawString(x, y+n, item.String(width), fg, bg)
+	}
+}
+
+type OptionItem interface {
 	Handle(*Dialog, termbox.Event)
 	String(int) string
 	MinWidth() int
 }
 
-type menuItem struct {
+type Menu struct {
 	label string
-	page  *Settings
+	page  *OptionPage
 }
 
-func (m *menuItem) Handle(dialog *Dialog, e termbox.Event) {
+func (m *Menu) Handle(dialog *Dialog, e termbox.Event) {
 	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		dialog.Enter(m.page)
 	}
 }
 
-func (m *menuItem) String(width int) string {
+func (m *Menu) String(width int) string {
 	return LayoutString(m.label, "", width)
 }
 
-func (m *menuItem) MinWidth() int {
+func (m *Menu) MinWidth() int {
 	return len(m.label)
 }
 
-type checkboxItem struct {
+type Checkbox struct {
 	label string
 	on    bool
 }
 
-func (c *checkboxItem) Handle(dialog *Dialog, e termbox.Event) {
+func (c *Checkbox) Handle(dialog *Dialog, e termbox.Event) {
 	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		c.on = !c.on
 	}
 }
 
-func (c *checkboxItem) String(width int) string {
+func (c *Checkbox) String(width int) string {
 	box := "[ ]"
 	if c.on {
 		box = "[x]"
@@ -217,7 +203,7 @@ func (c *checkboxItem) String(width int) string {
 	return LayoutString(c.label, box, width)
 }
 
-func (c *checkboxItem) MinWidth() int {
+func (c *Checkbox) MinWidth() int {
 	return len(c.label) + 4
 }
 
@@ -226,4 +212,29 @@ func LayoutString(lhs, rhs string, width int) string {
 		lhs = strings.TrimSpace(lhs[:width-len(rhs)-5]) + "..."
 	}
 	return lhs + strings.Repeat(" ", width-len(rhs)-1-len(lhs)) + rhs
+}
+
+type Size struct {
+	Width, Height int
+}
+
+func MakeSize(width, height int) Size {
+	if width < 0 {
+		width = -width
+	}
+	if height < 0 {
+		height = -height
+	}
+	return Size{width, height}
+}
+
+func (s Size) Union(o Size) Size {
+	u := s
+	if u.Width < o.Width {
+		u.Width = o.Width
+	}
+	if u.Height < o.Height {
+		u.Height = o.Height
+	}
+	return u
 }

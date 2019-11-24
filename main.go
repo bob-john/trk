@@ -82,7 +82,7 @@ func main() {
 			case termbox.EventKey:
 				switch e.Key {
 				case termbox.KeyCtrlO:
-					ui.Show(NewDialog(5, 5, settings()))
+					ui.Show(NewDialog(5, 5, options()))
 
 				case termbox.KeyCtrlS:
 					err := model.Seq.Write(os.Args[1])
@@ -210,37 +210,37 @@ func render() {
 	termbox.Flush()
 }
 
-func settings() *Settings {
+func options() *OptionPage {
 	var (
 		inputs, _  = driver.Ins()
 		outputs, _ = driver.Outs()
 	)
-	addInputs := func(p *Settings) {
+	addInputs := func(p *OptionPage) {
 		for _, port := range inputs {
 			p.AddCheckbox(port.String(), false)
 		}
 	}
-	addOutputs := func(p *Settings) {
+	addOutputs := func(p *OptionPage) {
 		for _, port := range outputs {
 			p.AddCheckbox(port.String(), false)
 		}
 	}
-	settings := NewSettings("Devices")
-	settings.AddMenu("Digitakt", func(page *Settings) {
-		page.AddMenu("In", func(page *Settings) {
+	options := NewOptionPage("Devices")
+	options.AddMenu("Digitakt", func(page *OptionPage) {
+		page.AddMenu("In", func(page *OptionPage) {
 			addInputs(page)
 		})
-		page.AddMenu("Out", func(page *Settings) {
+		page.AddMenu("Out", func(page *OptionPage) {
 			addOutputs(page)
 		})
 	})
-	settings.AddMenu("Digitone", func(page *Settings) {
-		page.AddMenu("In", func(page *Settings) {
+	options.AddMenu("Digitone", func(page *OptionPage) {
+		page.AddMenu("In", func(page *OptionPage) {
 			addInputs(page)
 		})
-		page.AddMenu("Out", func(page *Settings) {
+		page.AddMenu("Out", func(page *OptionPage) {
 			addOutputs(page)
 		})
 	})
-	return settings
+	return options
 }
