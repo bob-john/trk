@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
@@ -217,29 +218,64 @@ func options() *OptionPage {
 	)
 	addInputs := func(p *OptionPage) {
 		for _, port := range inputs {
-			p.AddCheckbox(port.String(), false)
+			p.AddCheckbox(" "+port.String(), false)
 		}
 	}
 	addOutputs := func(p *OptionPage) {
 		for _, port := range outputs {
-			p.AddCheckbox(port.String(), false)
+			p.AddCheckbox(" "+port.String(), false)
 		}
 	}
-	options := NewOptionPage("Devices")
+	var (
+		channels     = []string{"Off"}
+		autoChannels = []string{"Auto"}
+	)
+	for n := 0; n < 16; n++ {
+		channels = append(channels, strconv.Itoa(1+n))
+		autoChannels = append(autoChannels, strconv.Itoa(1+n))
+	}
+
+	options := NewOptionPage("MIDI config")
 	options.AddMenu("Digitakt", func(page *OptionPage) {
-		page.AddMenu("In", func(page *OptionPage) {
+		page.AddMenu("Port config", func(page *OptionPage) {
+			page.AddLabel("Input")
 			addInputs(page)
-		})
-		page.AddMenu("Out", func(page *OptionPage) {
+			page.AddLabel("Output")
 			addOutputs(page)
+		})
+		page.AddMenu("Channels", func(page *OptionPage) {
+			for n := 0; n < 8; n++ {
+				page.AddPicker(fmt.Sprintf("Track %d channel", 1+n), channels)
+			}
+			for n := 0; n < 8; n++ {
+				page.AddPicker(fmt.Sprintf("Track %s channel", string('A'+n)), channels)
+			}
+			page.AddPicker("Auto channel", channels)
+			page.AddPicker("Program change input channel", autoChannels)
+			page.AddPicker("Program change output channel", autoChannels)
+			page.AddPicker("Receive mute from", []string{"None", "Digitatk", "Digitone", "All"})
+			page.AddPicker("Send mute to", []string{"None", "Digitatk", "Digitone", "All"})
 		})
 	})
 	options.AddMenu("Digitone", func(page *OptionPage) {
-		page.AddMenu("In", func(page *OptionPage) {
+		page.AddMenu("Port config", func(page *OptionPage) {
+			page.AddLabel("Input")
 			addInputs(page)
-		})
-		page.AddMenu("Out", func(page *OptionPage) {
+			page.AddLabel("Output")
 			addOutputs(page)
+		})
+		page.AddMenu("Channels", func(page *OptionPage) {
+			for n := 0; n < 4; n++ {
+				page.AddPicker(fmt.Sprintf("Track %d channel", 1+n), channels)
+			}
+			for n := 0; n < 4; n++ {
+				page.AddPicker(fmt.Sprintf("Midi %d channel", 1+n), channels)
+			}
+			page.AddPicker("Auto channel", channels)
+			page.AddPicker("Program change input channel", autoChannels)
+			page.AddPicker("Program change output channel", autoChannels)
+			page.AddPicker("Receive mute from", []string{"None", "Digitatk", "Digitone", "All"})
+			page.AddPicker("Send mute to", []string{"None", "Digitatk", "Digitone", "All"})
 		})
 	})
 	return options

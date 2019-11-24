@@ -53,20 +53,9 @@ func (d *Dialog) Page() *OptionPage {
 	return d.stack[len(d.stack)-1]
 }
 
-func (d *Dialog) Breadcrumb() string {
-	if len(d.stack) < 2 {
-		return d.Page().title
-	}
-	var titles []string
-	for _, page := range d.stack[len(d.stack)-2:] {
-		titles = append(titles, page.title)
-	}
-	return strings.Join(titles, " > ")
-}
-
 func (d *Dialog) Enter(page *OptionPage) {
 	d.stack = append(d.stack, page)
-	page.selectedItem = 0 //HACK
+	page.OnEnter()
 }
 
 func (d *Dialog) Back() {
@@ -82,7 +71,7 @@ func (d *Dialog) Handle(ui *UI, e termbox.Event) {
 	switch e.Key {
 	case termbox.KeyEsc:
 		ui.Dismiss()
-	case termbox.KeyArrowLeft, termbox.KeyBackspace:
+	case termbox.KeyBackspace:
 		if len(d.stack) > 1 {
 			d.Back()
 		} else {
@@ -96,7 +85,7 @@ func (d *Dialog) Handle(ui *UI, e termbox.Event) {
 
 func (d *Dialog) Render() {
 	page := d.Page()
-	title := d.Breadcrumb()
+	title := page.title
 	sz := page.PreferredSize().Union(MakeSize(len(title)+4, 0))
 	DrawBox(d.x, d.y, d.x+sz.Width, d.y+sz.Height, termbox.ColorDefault, termbox.ColorDefault)
 	DrawString(d.x+1, d.y, " "+title+" ", termbox.ColorDefault, termbox.ColorDefault)
@@ -104,23 +93,32 @@ func (d *Dialog) Render() {
 }
 
 type OptionPage struct {
-	title        string
-	items        []OptionItem
-	selectedItem int
+	title    string
+	items    []OptionItem
+	selected int
+	offset   int
 }
 
 func NewOptionPage(title string) *OptionPage {
-	return &OptionPage{title, nil, 0}
+	return &OptionPage{title, nil, 0, 0}
 }
 
 func (p *OptionPage) AddMenu(title string, build func(page *OptionPage)) {
-	page := &OptionPage{title, nil, 0}
+	page := &OptionPage{title, nil, 0, 0}
 	p.items = append(p.items, &Menu{title, page})
 	build(page)
 }
 
 func (p *OptionPage) AddCheckbox(title string, on bool) {
 	p.items = append(p.items, &Checkbox{title, on})
+}
+
+func (p *OptionPage) AddPicker(label string, values []string) {
+	p.items = append(p.items, &Picker{label, values, 0})
+}
+
+func (p *OptionPage) AddLabel(label string) {
+	p.items = append(p.items, &Label{label})
 }
 
 func (p *OptionPage) PreferredSize() Size {
@@ -131,7 +129,15 @@ func (p *OptionPage) PreferredSize() Size {
 			sz.Width = minWidth
 		}
 	}
+	if sz.Height > 6 {
+		sz.Height = 6
+	}
 	return sz
+}
+
+func (p *OptionPage) OnEnter() {
+	p.selected = 0
+	p.offset = 0
 }
 
 func (p *OptionPage) Handle(d *Dialog, e termbox.Event) {
@@ -140,22 +146,40 @@ func (p *OptionPage) Handle(d *Dialog, e termbox.Event) {
 	}
 	switch e.Key {
 	case termbox.KeyArrowDown:
-		p.selectedItem++
+		p.selected++
+		if p.selected >= p.offset+5 {
+			p.offset++
+		}
 	case termbox.KeyArrowUp:
-		p.selectedItem--
+		p.selected--
+		if p.selected < p.offset {
+			p.offset--
+		}
 	default:
-		p.items[p.selectedItem].Handle(d, e)
+		p.items[p.selected].Handle(d, e)
 	}
-	p.selectedItem = clamp(p.selectedItem, 0, len(p.items)-1)
+	p.selected = clamp(p.selected, 0, len(p.items)-1)
+	if len(p.items) > 5 {
+		p.offset = clamp(p.offset, 0, len(p.items)-5)
+	} else {
+		p.offset = 0
+	}
 }
 
 func (p *OptionPage) Render(x, y, width int) {
-	for n, item := range p.items {
+	for n := 0; n < 5; n++ {
+		if p.offset+n >= len(p.items) {
+			return
+		}
+		item := p.items[p.offset+n]
 		fg, bg := termbox.ColorDefault, termbox.ColorDefault
-		if n == p.selectedItem {
+		if p.offset+n == p.selected {
 			fg = fg | termbox.AttrReverse
 		}
 		DrawString(x, y+n, item.String(width), fg, bg)
+	}
+	if len(p.items) > 5 {
+		DrawString(x+width-1, y+5*p.selected/len(p.items), "\u2590", termbox.ColorDefault, termbox.ColorDefault)
 	}
 }
 
@@ -205,6 +229,53 @@ func (c *Checkbox) String(width int) string {
 
 func (c *Checkbox) MinWidth() int {
 	return len(c.label) + 4
+}
+
+type Picker struct {
+	label    string
+	values   []string
+	selected int
+}
+
+func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
+	if e.Type != termbox.EventKey {
+		return
+	}
+	switch e.Key {
+	case termbox.KeyArrowRight:
+		p.selected++
+	case termbox.KeyArrowLeft:
+		p.selected--
+	}
+	p.selected = clamp(p.selected, 0, len(p.values)-1)
+}
+
+func (p *Picker) String(width int) string {
+	return LayoutString(p.label, p.values[p.selected], width)
+}
+
+func (p *Picker) MinWidth() int {
+	w := 0
+	for _, val := range p.values {
+		if len(val) > w {
+			w = len(val)
+		}
+	}
+	return len(p.label) + 1 + w
+}
+
+type Label struct {
+	text string
+}
+
+func (*Label) Handle(dialog *Dialog, e termbox.Event) {}
+
+func (l *Label) String(width int) string {
+	return LayoutString(l.text, "", width)
+}
+
+func (l *Label) MinWidth() int {
+	return len(l.text)
 }
 
 func LayoutString(lhs, rhs string, width int) string {
