@@ -24,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := model.LoadSeq(os.Args[1])
+	err := model.LoadTrack(os.Args[1])
 	must(err)
 
 	err = termbox.Init()
@@ -34,7 +34,7 @@ func main() {
 	digitakt, _ = OpenDevice("Digitakt", "Elektron Digitakt", "Elektron Digitakt")
 	digitone, _ = OpenDevice("Digitone", "Elektron Digitone", "Elektron Digitone")
 
-	model.Seq.ConsolidatedRow(0).Play(digitone, digitakt)
+	model.Track.Seq.ConsolidatedRow(0).Play(digitone, digitakt)
 
 	var (
 		eventC = make(chan termbox.Event)
@@ -86,12 +86,12 @@ func main() {
 					ui.Show(NewDialog(5, 5, options()))
 
 				case termbox.KeyCtrlS:
-					err := model.Seq.Write(os.Args[1])
+					err := model.Track.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
 				case termbox.KeyEsc:
-					err := model.Seq.Write(os.Args[1])
+					err := model.Track.Write(os.Args[1])
 					if err != nil {
 						log.Fatal(err)
 					}
@@ -137,18 +137,18 @@ func main() {
 				model.State = Viewing
 			}
 			if model.State == Recording {
-				model.Seq.Insert(m.Device.Name(), model.Head, m.Message)
+				model.Track.Seq.Insert(m.Device.Name(), model.Head, m.Message)
 			}
 		}
 		if model.State == Playing {
 			switch tick {
 			case 12:
-				row := model.Seq.ConsolidatedRow(model.Head + 2)
+				row := model.Track.Seq.ConsolidatedRow(model.Head + 2)
 				row.Digitone.Pattern.Play(digitone, 15)
 				row.Digitakt.Pattern.Play(digitakt, 15)
 
 			case 18:
-				row := model.Seq.ConsolidatedRow(model.Head + 1)
+				row := model.Track.Seq.ConsolidatedRow(model.Head + 1)
 				row.Digitone.Mute.Play(digitone, row.Digitone.Channels)
 				row.Digitakt.Mute.Play(digitakt, row.Digitakt.Channels)
 				row.Digitone.Mute.Play(digitakt, row.Digitone.Channels) //HACK
@@ -159,7 +159,7 @@ func main() {
 			}
 		} else {
 			if model.Head != oldHead {
-				model.Seq.ConsolidatedRow(model.Head).Play(digitone, digitakt)
+				model.Track.Seq.ConsolidatedRow(model.Head).Play(digitone, digitakt)
 			}
 		}
 		render()
@@ -196,7 +196,7 @@ func color(on, ch bool) (fg termbox.Attribute) {
 
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	row, org := model.Seq.ConsolidatedRow(model.Head), model.Seq.Row(model.Head)
+	row, org := model.Track.Seq.ConsolidatedRow(model.Head), model.Track.Seq.Row(model.Head)
 	DrawString(4, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
 	DrawString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
 	DrawString(8+row.Digitakt.Channels.Len+1, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
@@ -204,7 +204,7 @@ func render() {
 	DrawString(0, 2, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		n := n
-		ch := model.HeadForTrig(n) == 0 || model.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Seq.Row(model.HeadForTrig(n-1)))
+		ch := model.HeadForTrig(n) == 0 || model.Track.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Track.Seq.Row(model.HeadForTrig(n-1)))
 		DrawString(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
 	}
 	ui.Render()
@@ -250,11 +250,11 @@ func options() *OptionPage {
 			for n := 0; n < 8; n++ {
 				page.AddPicker(fmt.Sprintf("Track %s channel", string('A'+n)), channels)
 			}
+			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
+			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
 			page.AddPicker("Auto channel", channels)
 			page.AddPicker("Program change input channel", autoChannels)
 			page.AddPicker("Program change output channel", autoChannels)
-			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
-			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
 		})
 	})
 	options.AddMenu("Digitone", func(page *OptionPage) {
@@ -271,11 +271,11 @@ func options() *OptionPage {
 			for n := 0; n < 4; n++ {
 				page.AddPicker(fmt.Sprintf("Midi %d channel", 1+n), channels)
 			}
+			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
+			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
 			page.AddPicker("Auto channel", channels)
 			page.AddPicker("Program change input channel", autoChannels)
 			page.AddPicker("Program change output channel", autoChannels)
-			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
-			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
 		})
 	})
 	return options

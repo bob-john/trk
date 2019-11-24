@@ -1,12 +1,10 @@
 package main
 
 import (
-	"archive/zip"
 	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -19,76 +17,41 @@ type Seq struct {
 	row map[int]*Row
 }
 
-func ReadSeq(path string) (*Seq, error) {
-	seq := NewSeq()
-	r, err := zip.OpenReader(path)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	for _, f := range r.File {
-		switch f.Name {
-		case "seq.csv":
-			f, err := f.Open()
-			if err != nil {
-				return nil, err
-			}
-			defer f.Close()
-			r := csv.NewReader(f)
-			r.ReuseRecord = true
-			for {
-				record, err := r.Read()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					return nil, err
-				}
-				row, err := DecodeRow(record)
-				if err != nil {
-					return nil, err
-				}
-				seq.row[row.Index] = row
-			}
-			f.Close()
-		}
-	}
-	return seq, nil
-}
-
 func NewSeq() *Seq {
 	return &Seq{make(map[int]*Row)}
 }
 
-func (s *Seq) Write(path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
+func ReadSeq(f io.Reader) (*Seq, error) {
+	seq := NewSeq()
+	r := csv.NewReader(f)
+	r.ReuseRecord = true
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		row, err := DecodeRow(record)
+		if err != nil {
+			return nil, err
+		}
+		seq.row[row.Index] = row
 	}
-	defer f.Close()
-	w := zip.NewWriter(f)
-	defer w.Close()
-	o, err := w.Create("seq.csv")
-	if err != nil {
-		return err
-	}
-	u := csv.NewWriter(o)
+	return seq, nil
+}
+
+func (s *Seq) Write(f io.Writer) error {
+	w := csv.NewWriter(f)
 	for _, row := range s.row {
-		err = u.Write(row.Record())
+		err := w.Write(row.Record())
 		if err != nil {
 			return err
 		}
 	}
-	u.Flush()
-	err = u.Error()
-	if err != nil {
-		return err
-	}
-	err = w.Close()
-	if err != nil {
-		return err
-	}
-	return f.Close()
+	w.Flush()
+	return w.Error()
 }
 
 func (s *Seq) Insert(device string, row int, message midi.Message) {

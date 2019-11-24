@@ -3,16 +3,16 @@ package main
 import "os"
 
 type Model struct {
-	Seq   *Seq
+	Track *Track
 	Head  int
 	State State
 }
 
-func (m *Model) LoadSeq(path string) error {
+func (m *Model) LoadTrack(path string) error {
 	var err error
-	m.Seq, err = ReadSeq(path)
+	m.Track, err = ReadTrack(path)
 	if os.IsNotExist(err) {
-		m.Seq = NewSeq()
+		m.Track = NewTrack()
 	} else if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (m *Model) LastPattern() int {
 
 func (m *Model) ClearStep() {
 	if m.State.Is(Viewing, Playing) {
-		m.Seq.Clear(m.Head)
+		m.Track.Seq.Clear(m.Head)
 	}
 }
 
