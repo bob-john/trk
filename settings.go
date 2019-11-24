@@ -10,15 +10,43 @@ type Settings struct {
 	Digitone *DeviceSettings
 }
 
+func NewSettings() *Settings {
+	return &Settings{
+		Digitakt: &DeviceSettings{
+			Inputs:     make(map[string]struct{}),
+			Outputs:    make(map[string]struct{}),
+			Channels:   make(map[int]struct{}),
+			ProgChgSrc: DeviceSourceDigitakt,
+			MuteSrc:    DeviceSourceDigitakt,
+		},
+		Digitone: &DeviceSettings{
+			Inputs:     make(map[string]struct{}),
+			Outputs:    make(map[string]struct{}),
+			Channels:   make(map[int]struct{}),
+			ProgChgSrc: DeviceSourceDigitone,
+			MuteSrc:    DeviceSourceDigitone,
+		},
+	}
+}
+
+func ReadSettings(f io.Reader) (*Settings, error) {
+	s := NewSettings()
+	err := json.NewDecoder(f).Decode(s)
+	return s, err
+}
+
+func (s *Settings) Write(f io.Writer) error {
+	return json.NewEncoder(f).Encode(s)
+}
+
 type DeviceSettings struct {
-	Input          []string
-	Output         []string
-	Channels       []int
-	ProgChgSrc     DeviceSource
-	MuteSrc        DeviceSource
-	AutoChannel    int
-	ProgChgInChan  int
-	ProgChgOutChan int
+	Inputs       map[string]struct{}
+	Outputs      map[string]struct{}
+	Channels     map[int]struct{}
+	ProgChgSrc   DeviceSource
+	MuteSrc      DeviceSource
+	ProgChgInCh  int
+	ProgChgOutCh int
 }
 
 type DeviceSource int
@@ -29,28 +57,14 @@ const (
 	DeviceSourceBoth
 )
 
-func NewSettings() *Settings {
-	return &Settings{
-		Digitakt: &DeviceSettings{
-			Channels:    []int{1, 2, 3, 4, 5, 6, 7, 8},
-			ProgChgSrc:  DeviceSourceDigitakt,
-			MuteSrc:     DeviceSourceDigitakt,
-			AutoChannel: 10,
-		},
-		Digitone: &DeviceSettings{
-			Channels:    []int{1, 2, 3, 4},
-			ProgChgSrc:  DeviceSourceDigitone,
-			MuteSrc:     DeviceSourceDigitone,
-			AutoChannel: 10,
-		},
+func (s DeviceSource) String() string {
+	switch s {
+	case DeviceSourceDigitakt:
+		return "Digitakt"
+	case DeviceSourceDigitone:
+		return "Digitone"
+	case DeviceSourceBoth:
+		return "Both"
 	}
-}
-
-func ReadSettings(f io.Reader) (*Settings, error) {
-	s := NewSettings()
-	return s, nil
-}
-
-func (s *Settings) Write(f io.Writer) error {
-	return json.NewEncoder(f).Encode(s)
+	return ""
 }

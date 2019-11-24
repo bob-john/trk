@@ -109,12 +109,12 @@ func (p *OptionPage) AddMenu(title string, build func(page *OptionPage)) {
 	build(page)
 }
 
-func (p *OptionPage) AddCheckbox(title string, on bool) {
-	p.items = append(p.items, &Checkbox{title, on})
+func (p *OptionPage) AddCheckbox(title string, on bool, onchange func(bool)) {
+	p.items = append(p.items, &Checkbox{title, on, onchange})
 }
 
-func (p *OptionPage) AddPicker(label string, values []string) {
-	p.items = append(p.items, &Picker{label, values, 0})
+func (p *OptionPage) AddPicker(label string, values []string, selected int, onchange func(int)) {
+	p.items = append(p.items, &Picker{label, values, selected, onchange})
 }
 
 func (p *OptionPage) AddLabel(label string) {
@@ -209,13 +209,15 @@ func (m *Menu) MinWidth() int {
 }
 
 type Checkbox struct {
-	label string
-	on    bool
+	label    string
+	on       bool
+	onchange func(bool)
 }
 
 func (c *Checkbox) Handle(dialog *Dialog, e termbox.Event) {
 	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		c.on = !c.on
+		c.onchange(c.on)
 	}
 }
 
@@ -235,6 +237,7 @@ type Picker struct {
 	label    string
 	values   []string
 	selected int
+	onchange func(int)
 }
 
 func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
@@ -248,6 +251,7 @@ func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
 		p.selected--
 	}
 	p.selected = clamp(p.selected, 0, len(p.values)-1)
+	p.onchange(p.selected)
 }
 
 func (p *Picker) String(width int) string {

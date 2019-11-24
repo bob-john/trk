@@ -216,67 +216,77 @@ func options() *OptionPage {
 		inputs, _  = driver.Ins()
 		outputs, _ = driver.Outs()
 	)
-	addInputs := func(p *OptionPage) {
-		for _, port := range inputs {
-			p.AddCheckbox(" "+port.String(), false)
+	addDeviceOptions := func(p *OptionPage, s *DeviceSettings) {
+		addInputs := func(p *OptionPage, s *DeviceSettings) {
+			for _, port := range inputs {
+				name := port.String()
+				_, on := s.Inputs[name]
+				p.AddCheckbox(" "+port.String(), on, func(on bool) {
+					if on {
+						s.Inputs[name] = struct{}{}
+					} else {
+						delete(s.Inputs, name)
+					}
+				})
+			}
 		}
-	}
-	addOutputs := func(p *OptionPage) {
-		for _, port := range outputs {
-			p.AddCheckbox(" "+port.String(), false)
+		addOutputs := func(p *OptionPage, s *DeviceSettings) {
+			for _, port := range outputs {
+				name := port.String()
+				_, on := s.Outputs[name]
+				p.AddCheckbox(" "+port.String(), on, func(on bool) {
+					if on {
+						s.Outputs[name] = struct{}{}
+					} else {
+						delete(s.Outputs, name)
+					}
+				})
+			}
 		}
+		var channels = []string{"Off"}
+		for n := 0; n < 16; n++ {
+			channels = append(channels, strconv.Itoa(1+n))
+		}
+		p.AddMenu("Port config", func(page *OptionPage) {
+			page.AddLabel("Input")
+			addInputs(page, s)
+			page.AddLabel("Output")
+			addOutputs(page, s)
+		})
+		p.AddMenu("Program Change", func(page *OptionPage) {
+			page.AddPicker("Record", []string{"Digitatk", "Digitone", "Both"}, int(s.ProgChgSrc), func(selected int) {
+				s.ProgChgSrc = DeviceSource(selected)
+			})
+			page.AddPicker("Input channel", channels, s.ProgChgInCh, func(selected int) {
+				s.ProgChgInCh = selected
+			})
+			page.AddPicker("Output channel", channels, s.ProgChgOutCh, func(selected int) {
+				s.ProgChgOutCh = selected
+			})
+		})
+		p.AddMenu("Mute", func(page *OptionPage) {
+			page.AddPicker("Receive from", []string{"Digitatk", "Digitone", "Both"}, int(s.MuteSrc), func(selected int) {
+				s.MuteSrc = DeviceSource(selected)
+			})
+			for n := 0; n < 16; n++ {
+				ch := n
+				_, on := s.Channels[ch]
+				page.AddCheckbox(fmt.Sprintf("Channel %d", 1+n), on, func(on bool) {
+					if on {
+						s.Channels[ch] = struct{}{}
+					} else {
+						delete(s.Channels, ch)
+					}
+				})
+			}
+		})
 	}
-	var (
-		channels     = []string{"Off"}
-		autoChannels = []string{"Auto"}
-	)
-	for n := 0; n < 16; n++ {
-		channels = append(channels, strconv.Itoa(1+n))
-		autoChannels = append(autoChannels, strconv.Itoa(1+n))
-	}
-
 	options := NewOptionPage("MIDI config")
 	options.AddMenu("Digitakt", func(page *OptionPage) {
-		page.AddMenu("Port config", func(page *OptionPage) {
-			page.AddLabel("Input")
-			addInputs(page)
-			page.AddLabel("Output")
-			addOutputs(page)
-		})
-		page.AddMenu("Channels", func(page *OptionPage) {
-			for n := 0; n < 8; n++ {
-				page.AddPicker(fmt.Sprintf("Track %d channel", 1+n), channels)
-			}
-			for n := 0; n < 8; n++ {
-				page.AddPicker(fmt.Sprintf("Track %s channel", string('A'+n)), channels)
-			}
-			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
-			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
-			page.AddPicker("Auto channel", channels)
-			page.AddPicker("Program change input channel", autoChannels)
-			page.AddPicker("Program change output channel", autoChannels)
-		})
+		addDeviceOptions(page, model.Track.Settings.Digitakt)
 	})
 	options.AddMenu("Digitone", func(page *OptionPage) {
-		page.AddMenu("Port config", func(page *OptionPage) {
-			page.AddLabel("Input")
-			addInputs(page)
-			page.AddLabel("Output")
-			addOutputs(page)
-		})
-		page.AddMenu("Channels", func(page *OptionPage) {
-			for n := 0; n < 4; n++ {
-				page.AddPicker(fmt.Sprintf("Track %d channel", 1+n), channels)
-			}
-			for n := 0; n < 4; n++ {
-				page.AddPicker(fmt.Sprintf("Midi %d channel", 1+n), channels)
-			}
-			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
-			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
-			page.AddPicker("Auto channel", channels)
-			page.AddPicker("Program change input channel", autoChannels)
-			page.AddPicker("Program change output channel", autoChannels)
-		})
+		addDeviceOptions(page, model.Track.Settings.Digitone)
 	})
 	return options
 }
