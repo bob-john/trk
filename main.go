@@ -253,8 +253,8 @@ func options() *OptionPage {
 			page.AddPicker("Auto channel", channels)
 			page.AddPicker("Program change input channel", autoChannels)
 			page.AddPicker("Program change output channel", autoChannels)
-			page.AddPicker("Receive mute from", []string{"None", "Digitatk", "Digitone", "All"})
-			page.AddPicker("Send mute to", []string{"None", "Digitatk", "Digitone", "All"})
+			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
+			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
 		})
 	})
 	options.AddMenu("Digitone", func(page *OptionPage) {
@@ -274,8 +274,8 @@ func options() *OptionPage {
 			page.AddPicker("Auto channel", channels)
 			page.AddPicker("Program change input channel", autoChannels)
 			page.AddPicker("Program change output channel", autoChannels)
-			page.AddPicker("Receive mute from", []string{"None", "Digitatk", "Digitone", "All"})
-			page.AddPicker("Send mute to", []string{"None", "Digitatk", "Digitone", "All"})
+			page.AddPicker("Record program change from", []string{"Digitatk", "Digitone", "Both"})
+			page.AddPicker("Record mute from", []string{"Digitatk", "Digitone", "Both"})
 		})
 	})
 	return options

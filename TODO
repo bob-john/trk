@@ -1,6 +1,5 @@
 IN PROGRESS
 ===========
-- Add mute settings: channels list + share channel.
 - Write/load the settings from file.
 - Apply the settings to playback.
 
@@ -11,12 +10,10 @@ NEXT
 
 + Improvements
 - Center dialog
+- Do not select label in dialog
 
 + Features
 - Temp file saved and restored automatically. Ctrl+S to save explicitely. Ctrl+L or R to reload from disk (with confirmation).
 - Add pattern length + global scale.
 - Song part?
 - Display help
-
-+ Format .trk
-- Add a definition file (channels, device name, port - to know whether to merge message send and receive, typically mutes)
