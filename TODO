@@ -1,5 +1,7 @@
 IN PROGRESS
 ===========
+- Fix recording (mute & pattern) -> see Track0
+- Improve play (only send message for changes from the actual current state of the player)
 
 NEXT
 ====

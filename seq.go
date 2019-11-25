@@ -352,3 +352,66 @@ func (m Mute) Copy() Mute {
 	}
 	return cpy
 }
+
+type ProgramChange struct {
+	Channel, Program int
+}
+
+func (pc ProgramChange) Match(o ProgramChange) bool {
+	return pc.Channel == o.Channel
+}
+
+type ControlChange struct {
+	Channel, Controller, Value int
+}
+
+func (cc ControlChange) Match(o ControlChange) bool {
+	return cc.Channel == o.Channel && cc.Controller == o.Controller
+}
+
+type Track0 struct {
+	device  string
+	pattern map[int]int
+	mute    map[int][16]bool
+}
+
+func NewTrack0(device string) *Track0 {
+	return &Track0{device, make(map[int]int), make(map[int][16]bool)}
+}
+
+func (t *Track0) SetPattern(tick int, pattern int) {
+	t.pattern[tick] = pattern
+}
+
+func (t *Track0) Pattern(tick int) int {
+	pattern, ok := t.pattern[tick]
+	if ok {
+		return pattern
+	}
+	if tick > 0 {
+		pattern = t.Pattern(tick - 1)
+	}
+	t.pattern[tick] = pattern
+	return pattern
+}
+
+func (t *Track0) SetMute(tick int, track int, muted bool) {
+	if track < 0 || track >= 16 {
+		return
+	}
+	mute := t.Mute(tick)
+	mute[track] = muted
+	t.mute[tick] = mute
+}
+
+func (t *Track0) Mute(tick int) [16]bool {
+	mute, ok := t.mute[tick]
+	if ok {
+		return mute
+	}
+	if tick > 0 {
+		mute = t.Mute(tick - 1)
+	}
+	t.mute[tick] = mute
+	return mute
+}
