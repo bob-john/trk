@@ -40,8 +40,8 @@ func (d *Device) Close() {
 
 type Input struct {
 	name string
-	in  mid.In
-	inC chan midi.Message
+	in   mid.In
+	inC  chan midi.Message
 }
 
 func OpenInput(name string) (*Input, error) {
@@ -126,56 +126,3 @@ type Message struct {
 	midi.Message
 	Port string
 }
-
-// type Ports struct {
-// 	input  map[string]*Input
-// 	output map[string]*Output
-// }
-
-// func NewPorts() *Ports {
-// 	return &Ports{make(map[string]*Input), make(map[string]*Output)}
-// }
-
-// func (p *Ports) SetInputs(names ...string) {
-// 	required := make(map[string]bool)
-// 	for _, name := range names {
-// 		port, err := OpenInput(name)
-// 		if err == nil {
-// 			p.input[name] = port
-// 			required[name] = true
-// 		}
-// 	}
-// 	for name, port := range p.input {
-// 		if !required[name] {
-// 			port.Close()
-// 			delete(p.input, name)
-// 		}
-// 	}
-// }
-
-// func (p *Ports) SetOutputs(names ...string) {
-// 	required := make(map[string]bool)
-// 	for _, name := range names {
-// 		port, err := OpenOutput(name)
-// 		if err == nil {
-// 			p.output[name] = port
-// 			required[name] = true
-// 		}
-// 	}
-// 	for name, port := range p.output {
-// 		if !required[name] {
-// 			port.Close()
-// 			delete(p.output, name)
-// 		}
-// 	}
-// }
-
-// func (p *Ports) Input(name string) *Input {
-// 	port, _ := p.input[name]
-// 	return port
-// }
-
-// func (p *Ports) Output(name string) *Output {
-// 	port, _ := p.output[name]
-// 	return port
-// }

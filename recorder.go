@@ -33,7 +33,7 @@ func NewRecorder() *Recorder {
 						}
 
 					}()
-					opened[name] = make(chan struct{})
+					opened[name] = quit
 				}
 				required[name] = true
 			}
