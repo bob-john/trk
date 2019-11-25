@@ -59,10 +59,10 @@ func (s *Seq) Insert(device string, row int, message midi.Message) {
 	switch m := message.(type) {
 	case channel.ProgramChange:
 		if strings.Contains(device, "Digitone") {
-			r.Digitone.Pattern = Pattern(m.Program())
+			r.Parts[Digitone].Pattern = Pattern(m.Program())
 		}
 		if strings.Contains(device, "Digitakt") {
-			r.Digitakt.Pattern = Pattern(m.Program())
+			r.Parts[Digitakt].Pattern = Pattern(m.Program())
 		}
 
 	case channel.ControlChange:
@@ -70,13 +70,13 @@ func (s *Seq) Insert(device string, row int, message midi.Message) {
 			return
 		}
 		ch := int(m.Channel())
-		if r.Digitone.Channels.Contains(ch) {
-			r.Digitone.Mute = s.ConsolidatedRow(row).Digitone.Mute.Copy()
-			r.Digitone.Mute[r.Digitone.Channels.IndexOf(ch)] = m.Value() != 0
+		if r.Parts[Digitone].Channels.Contains(ch) {
+			r.Parts[Digitone].Mute = s.ConsolidatedRow(row).Parts[Digitone].Mute.Copy()
+			r.Parts[Digitone].Mute[r.Parts[Digitone].Channels.IndexOf(ch)] = m.Value() != 0
 		}
-		if r.Digitakt.Channels.Contains(ch) {
-			r.Digitakt.Mute = s.ConsolidatedRow(row).Digitakt.Mute.Copy()
-			r.Digitakt.Mute[r.Digitakt.Channels.IndexOf(ch)] = m.Value() != 0
+		if r.Parts[Digitakt].Channels.Contains(ch) {
+			r.Parts[Digitakt].Mute = s.ConsolidatedRow(row).Parts[Digitakt].Mute.Copy()
+			r.Parts[Digitakt].Mute[r.Parts[Digitakt].Channels.IndexOf(ch)] = m.Value() != 0
 		}
 	}
 	if r.HasChanges(s.ConsolidatedRow(row)) {
@@ -118,81 +118,75 @@ func (s *Seq) Text(row int) string {
 }
 
 type Row struct {
-	Index    int
-	Digitone *Part
-	Digitakt *Part
+	Index int
+	Parts map[string]*Part
 }
 
 func DecodeRow(record []string) (*Row, error) {
 	if len(record) != 5 {
 		return nil, errors.New("row: invalid record")
 	}
-	res := new(Row)
-	res.Index, _ = strconv.Atoi(record[0])
-	res.Digitone = DecodePart(record[1:3], MakeRange(8, 11))
-	res.Digitakt = DecodePart(record[3:5], MakeRange(0, 7))
+	index, _ := strconv.Atoi(record[0])
+	res := NewRow(index)
+	res.Parts[Digitone] = DecodePart(record[1:3], MakeRange(8, 11))
+	res.Parts[Digitakt] = DecodePart(record[3:5], MakeRange(0, 7))
 	return res, nil
 }
 
 func NewRow(index int) *Row {
 	return &Row{
-		Index:    index,
-		Digitone: NewPart(MakeRange(8, 11)),
-		Digitakt: NewPart(MakeRange(0, 7)),
+		Index: index,
+		Parts: map[string]*Part{
+			Digitone: NewPart(MakeRange(8, 11)),
+			Digitakt: NewPart(MakeRange(0, 7)),
+		},
 	}
 }
 
 func (r *Row) Record() []string {
 	return []string{
 		strconv.Itoa(r.Index),
-		r.Digitone.Pattern.String(),
-		r.Digitone.Mute.String(),
-		r.Digitakt.Pattern.String(),
-		r.Digitakt.Mute.String(),
+		r.Parts[Digitone].Pattern.String(),
+		r.Parts[Digitone].Mute.String(),
+		r.Parts[Digitakt].Pattern.String(),
+		r.Parts[Digitakt].Mute.String(),
 	}
 }
 
 func (r *Row) String() string {
-	return fmt.Sprintf("%3d %s %s", 1+r.Index%16, r.Digitone, r.Digitakt)
+	return fmt.Sprintf("%3d %s %s", 1+r.Index%16, r.Parts[Digitone], r.Parts[Digitakt])
 }
 
 func (r *Row) SetDefaults() {
-	r.Digitone.SetDefaults()
-	r.Digitakt.SetDefaults()
+	r.Parts[Digitone].SetDefaults()
+	r.Parts[Digitakt].SetDefaults()
 }
 
 func (r *Row) Consolidated() bool {
-	return r.Digitone.Consolidated() && r.Digitakt.Consolidated()
+	return r.Parts[Digitone].Consolidated() && r.Parts[Digitakt].Consolidated()
 }
 
 func (r *Row) Merge(o *Row) {
-	r.Digitone.Merge(o.Digitone)
-	r.Digitakt.Merge(o.Digitakt)
-}
-
-func (r *Row) Play(digitone, digitakt *Device) {
-	r.Digitone.Play(digitone)
-	r.Digitakt.Play(digitakt)
-
-	r.Digitone.Mute.Play(digitakt, r.Digitone.Channels) //HACK
+	r.Parts[Digitone].Merge(o.Parts[Digitone])
+	r.Parts[Digitakt].Merge(o.Parts[Digitakt])
 }
 
 func (r *Row) HasChanges(prev *Row) bool {
-	if r.Digitone.HasChanges(prev.Digitone) {
+	if r.Parts[Digitone].HasChanges(prev.Parts[Digitone]) {
 		return true
 	}
-	if r.Digitakt.HasChanges(prev.Digitakt) {
+	if r.Parts[Digitakt].HasChanges(prev.Parts[Digitakt]) {
 		return true
 	}
 	return false
 }
 
 func (r *Row) Copy() *Row {
-	return &Row{
-		Index:    r.Index,
-		Digitone: r.Digitone.Copy(),
-		Digitakt: r.Digitakt.Copy(),
+	dup := &Row{Index: r.Index, Parts: make(map[string]*Part)}
+	for name, part := range r.Parts {
+		dup.Parts[name] = part.Copy()
 	}
+	return dup
 }
 
 type Part struct {
@@ -246,11 +240,6 @@ func (p *Part) Merge(o *Part) {
 	}
 }
 
-func (p *Part) Play(out *Device) {
-	p.Pattern.Play(out, 15)
-	p.Mute.Play(out, p.Channels)
-}
-
 func (p *Part) HasChanges(prev *Part) bool {
 	if p.Pattern != -1 && p.Pattern != prev.Pattern {
 		return true
@@ -288,13 +277,6 @@ func (p Pattern) String() string {
 		return "..."
 	}
 	return fmt.Sprintf("%s%02d", string('A'+int(p)/16), 1+int(p)%16)
-}
-
-func (p Pattern) Play(out *Device, ch int) {
-	if out == nil {
-		return
-	}
-	out.Write(channel.Channel(ch).ProgramChange(uint8(p)))
 }
 
 type Mute map[int]bool
@@ -335,20 +317,6 @@ func (m Mute) Format(channels Range) string {
 
 func (m Mute) String() string {
 	return m.Format(MakeRange(0, 15))
-}
-
-func (m Mute) Play(out *Device, channels Range) {
-	if out == nil {
-		return
-	}
-	for n := 0; n < channels.Len; n++ {
-		ch := channels.Index + n
-		var muted uint8
-		if m[n] {
-			muted = 1
-		}
-		out.Write(channel.Channel(ch).ControlChange(94, muted))
-	}
 }
 
 func (m Mute) Copy() Mute {

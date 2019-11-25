@@ -12,9 +12,10 @@ import (
 
 var (
 	ui       = NewUI()
-	model    = new(Model)
-	digitakt *Device
-	digitone *Device
+	model    = NewModel()
+	player   = NewPlayer()
+	digitakt *Input
+	digitone *Input
 )
 
 func main() {
@@ -31,10 +32,10 @@ func main() {
 	must(err)
 	defer termbox.Close()
 
-	digitakt, _ = OpenDevice("Digitakt", "Elektron Digitakt", "Elektron Digitakt")
-	digitone, _ = OpenDevice("Digitone", "Elektron Digitone", "Elektron Digitone")
+	digitakt, _ = OpenInput("Elektron Digitakt")
+	digitone, _ = OpenInput("Elektron Digitone")
 
-	model.Track.Seq.ConsolidatedRow(0).Play(digitone, digitakt)
+	player.Play(model.Track, 0)
 
 	var (
 		eventC = make(chan termbox.Event)
@@ -44,14 +45,14 @@ func main() {
 	if digitakt != nil {
 		go func() {
 			for m := range digitakt.In() {
-				midiC <- Message{m, digitakt}
+				midiC <- Message{m, "Digitakt"}
 			}
 		}()
 	}
 	if digitone != nil {
 		go func() {
 			for m := range digitone.In() {
-				midiC <- Message{m, digitone}
+				midiC <- Message{m, "Digitone"}
 			}
 		}()
 	}
@@ -137,21 +138,16 @@ func main() {
 				model.State = Viewing
 			}
 			if model.State == Recording {
-				model.Track.Seq.Insert(m.Device.Name(), model.Head, m.Message)
+				model.Track.Seq.Insert(m.Device, model.Head, m.Message)
 			}
 		}
 		if model.State == Playing {
 			switch tick {
 			case 12:
-				row := model.Track.Seq.ConsolidatedRow(model.Head + 2)
-				row.Digitone.Pattern.Play(digitone, 15)
-				row.Digitakt.Pattern.Play(digitakt, 15)
+				player.PlayPattern(model.Track, model.Head+2)
 
 			case 18:
-				row := model.Track.Seq.ConsolidatedRow(model.Head + 1)
-				row.Digitone.Mute.Play(digitone, row.Digitone.Channels)
-				row.Digitakt.Mute.Play(digitakt, row.Digitakt.Channels)
-				row.Digitone.Mute.Play(digitakt, row.Digitone.Channels) //HACK
+				player.PlayMute(model.Track, model.Head+1)
 
 			case 24:
 				model.Head++
@@ -159,7 +155,7 @@ func main() {
 			}
 		} else {
 			if model.Head != oldHead {
-				model.Track.Seq.ConsolidatedRow(model.Head).Play(digitone, digitakt)
+				player.Play(model.Track, model.Head)
 			}
 		}
 		render()
@@ -197,15 +193,19 @@ func color(on, ch bool) (fg termbox.Attribute) {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	row, org := model.Track.Seq.ConsolidatedRow(model.Head), model.Track.Seq.Row(model.Head)
-	DrawString(4, 0, row.Digitakt.Pattern.String(), color(false, org.Digitakt.Pattern != -1), termbox.ColorDefault)
-	DrawString(8, 0, row.Digitakt.Mute.Format(row.Digitakt.Channels), color(false, len(org.Digitakt.Mute) != 0), termbox.ColorDefault)
-	DrawString(8+row.Digitakt.Channels.Len+1, 0, row.Digitone.Pattern.String(), color(false, org.Digitone.Pattern != -1), termbox.ColorDefault)
-	DrawString(12+row.Digitakt.Channels.Len+1, 0, row.Digitone.Mute.Format(row.Digitone.Channels), color(false, len(org.Digitone.Mute) != 0), termbox.ColorDefault)
-	DrawString(0, 2, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
+	var y int
+	for name, part := range row.Parts {
+		DrawString(4, y, name+":", termbox.ColorDefault, termbox.ColorDefault)
+		DrawString(4+len(name)+2, y, part.Pattern.String(), color(false, org.Parts[name].Pattern != -1), termbox.ColorDefault)
+		DrawString(8+len(name)+2, y, part.Mute.Format(part.Channels), color(false, len(org.Parts[name].Mute) != 0), termbox.ColorDefault)
+		y++
+	}
+	y++
+	DrawString(0, y, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		n := n
 		ch := model.HeadForTrig(n) == 0 || model.Track.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Track.Seq.Row(model.HeadForTrig(n-1)))
-		DrawString(4+(n%8)*3, 2+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
+		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
 	}
 	ui.Render()
 	termbox.Flush()
@@ -268,25 +268,19 @@ func options() *OptionPage {
 			page.AddPicker("Record from", []string{"Digitatk", "Digitone", "Both"}, int(s.MuteSrc), func(selected int) {
 				s.MuteSrc = DeviceSource(selected)
 			})
-			for n := 0; n < 16; n++ {
-				ch := n
-				_, on := s.Channels[ch]
-				page.AddCheckbox(fmt.Sprintf("Channel %d", 1+n), on, func(on bool) {
-					if on {
-						s.Channels[ch] = struct{}{}
-					} else {
-						delete(s.Channels, ch)
-					}
+			for n, ch := range s.Channels {
+				n := n
+				page.AddPicker(fmt.Sprintf("Track %d channel", 1+n), channels, ch, func(ch int) {
+					s.Channels[n] = ch
 				})
 			}
 		})
 	}
 	options := NewOptionPage("MIDI config")
-	options.AddMenu("Digitakt", func(page *OptionPage) {
-		addDeviceOptions(page, model.Track.Settings.Digitakt)
-	})
-	options.AddMenu("Digitone", func(page *OptionPage) {
-		addDeviceOptions(page, model.Track.Settings.Digitone)
-	})
+	for name, settings := range model.Track.Settings.Devices {
+		options.AddMenu(name, func(page *OptionPage) {
+			addDeviceOptions(page, settings)
+		})
+	}
 	return options
 }

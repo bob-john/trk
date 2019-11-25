@@ -8,6 +8,10 @@ type Model struct {
 	State State
 }
 
+func NewModel() *Model {
+	return new(Model)
+}
+
 func (m *Model) LoadTrack(path string) error {
 	var err error
 	m.Track, err = ReadTrack(path)

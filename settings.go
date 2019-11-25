@@ -5,30 +5,20 @@ import (
 	"io"
 )
 
+const (
+	Digitakt = "Digitakt"
+	Digitone = "Digitone"
+)
+
 type Settings struct {
-	Digitakt *DeviceSettings
-	Digitone *DeviceSettings
+	Devices map[string]*DeviceSettings
 }
 
 func NewSettings() *Settings {
 	return &Settings{
-		Digitakt: &DeviceSettings{
-			Inputs:       make(map[string]struct{}),
-			Outputs:      make(map[string]struct{}),
-			ProgChgSrc:   DeviceSourceDigitakt,
-			ProgChgInCh:  10,
-			ProgChgOutCh: 10,
-			MuteSrc:      DeviceSourceDigitakt,
-			Channels:     make(map[int]struct{}),
-		},
-		Digitone: &DeviceSettings{
-			Inputs:       make(map[string]struct{}),
-			Outputs:      make(map[string]struct{}),
-			ProgChgSrc:   DeviceSourceDigitone,
-			ProgChgInCh:  10,
-			ProgChgOutCh: 10,
-			MuteSrc:      DeviceSourceDigitone,
-			Channels:     make(map[int]struct{}),
+		Devices: map[string]*DeviceSettings{
+			Digitakt: NewDeviceSettings(DeviceSourceDigitakt, 8),
+			Digitone: NewDeviceSettings(DeviceSourceDigitone, 4),
 		},
 	}
 }
@@ -46,11 +36,23 @@ func (s *Settings) Write(f io.Writer) error {
 type DeviceSettings struct {
 	Inputs       map[string]struct{}
 	Outputs      map[string]struct{}
-	Channels     map[int]struct{}
+	Channels     []int
 	ProgChgSrc   DeviceSource
 	MuteSrc      DeviceSource
 	ProgChgInCh  int
 	ProgChgOutCh int
+}
+
+func NewDeviceSettings(source DeviceSource, trackCount int) *DeviceSettings {
+	return &DeviceSettings{
+		Inputs:       make(map[string]struct{}),
+		Outputs:      make(map[string]struct{}),
+		ProgChgSrc:   source,
+		ProgChgInCh:  10,
+		ProgChgOutCh: 10,
+		MuteSrc:      source,
+		Channels:     make([]int, trackCount),
+	}
 }
 
 type DeviceSource int

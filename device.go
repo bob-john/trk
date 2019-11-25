@@ -91,6 +91,10 @@ func (i *Input) In() <-chan midi.Message {
 	return i.inC
 }
 
+func (i *Input) String() string {
+	return i.in.String()
+}
+
 type Output struct {
 	out mid.Out
 	w   *mid.Writer
@@ -113,7 +117,87 @@ func (o *Output) Write(m midi.Message) error {
 	return o.w.Write(m)
 }
 
+func (o *Output) String() string {
+	return o.out.String()
+}
+
 type Message struct {
 	midi.Message
-	*Device
+	Device string
+}
+
+type Ports struct {
+	input  map[string]*Input
+	output map[string]*Output
+}
+
+func NewPorts() *Ports {
+	return &Ports{make(map[string]*Input), make(map[string]*Output)}
+}
+
+func (p *Ports) SetInputs(names ...string) {
+	required := make(map[string]bool)
+	for _, name := range names {
+		port, err := OpenInput(name)
+		if err == nil {
+			p.input[name] = port
+			required[name] = true
+		}
+	}
+	for name, port := range p.input {
+		if !required[name] {
+			port.Close()
+			delete(p.input, name)
+		}
+	}
+}
+
+func (p *Ports) SetOutputs(names ...string) {
+	required := make(map[string]bool)
+	for _, name := range names {
+		port, err := OpenOutput(name)
+		if err == nil {
+			p.output[name] = port
+			required[name] = true
+		}
+	}
+	for name, port := range p.output {
+		if !required[name] {
+			port.Close()
+			delete(p.output, name)
+		}
+	}
+}
+
+func (p *Ports) Input(name string) *Input {
+	port, _ := p.input[name]
+	return port
+}
+
+func (p *Ports) Output(name string) *Output {
+	port, _ := p.output[name]
+	return port
+}
+
+func (p *Ports) Write(names map[string]struct{}, message midi.Message) {
+	var err error
+	required := make(map[string]bool)
+	for name := range names {
+		required[name] = true
+		port, ok := p.output[name]
+		if !ok {
+			port, err = OpenOutput(name)
+			if err != nil {
+				continue
+			}
+			p.output[name] = port
+		}
+		port.Write(message)
+	}
+	for name, port := range p.output {
+		if !required[name] {
+			port.Close()
+			delete(p.output, name)
+		}
+	}
 }
