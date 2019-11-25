@@ -1,6 +1,5 @@
 IN PROGRESS
 ===========
-- Apply the settings to playback.
 
 NEXT
 ====
@@ -17,3 +16,9 @@ NEXT
 - Song part? Could be bank + 16 patterns with bank length. Ctrl+PgUp/PgDn to change bank. Have an "original" mode with 8 banks of 16 patterns and an extended mode of 25 banks of 99 patterns.
 - Ctrl+Z
 - Display help
+
++ Refactoring
+- Row -> Step
+- map[int]Row{[]Part} -> []Part{map[int]Step}
+- DeviceSettings{map[string]struct{}} -> DeviceSettings{[]string}
+- Drop DeviceSource, use device names.

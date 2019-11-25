@@ -33,6 +33,15 @@ func (s *Settings) Write(f io.Writer) error {
 	return json.NewEncoder(f).Encode(s)
 }
 
+func (s *Settings) InputPortNames() (names []string) {
+	for _, device := range s.Devices {
+		for name := range device.Inputs {
+			names = append(names, name)
+		}
+	}
+	return
+}
+
 type DeviceSettings struct {
 	Inputs       map[string]struct{}
 	Outputs      map[string]struct{}

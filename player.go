@@ -1,15 +1,16 @@
 package main
 
 import (
+	"github.com/gomidi/midi"
 	"github.com/gomidi/midi/midimessage/channel"
 )
 
 type Player struct {
-	ports *Ports
+	output map[string]*Output
 }
 
 func NewPlayer() *Player {
-	return &Player{NewPorts()}
+	return &Player{make(map[string]*Output)}
 }
 
 func (p *Player) Play(track *Track, row int) {
@@ -28,7 +29,7 @@ func (p *Player) PlayPattern(track *Track, step int) {
 		if ch < 0 {
 			continue
 		}
-		p.ports.Write(dev.Outputs, channel.Channel(ch).ProgramChange(uint8(part.Pattern)))
+		p.Write(dev.Outputs, channel.Channel(ch).ProgramChange(uint8(part.Pattern)))
 	}
 }
 
@@ -57,9 +58,32 @@ func (p *Player) playMute(mute Mute, device *DeviceSettings) {
 			continue
 		}
 		if mute[n] {
-			p.ports.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 1))
+			p.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 1))
 		} else {
-			p.ports.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 0))
+			p.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 0))
+		}
+	}
+}
+
+func (p *Player) Write(names map[string]struct{}, message midi.Message) {
+	var err error
+	required := make(map[string]bool)
+	for name := range names {
+		required[name] = true
+		port, ok := p.output[name]
+		if !ok {
+			port, err = OpenOutput(name)
+			if err != nil {
+				continue
+			}
+			p.output[name] = port
+		}
+		port.Write(message)
+	}
+	for name, port := range p.output {
+		if !required[name] {
+			port.Close()
+			delete(p.output, name)
 		}
 	}
 }

@@ -14,6 +14,7 @@ var (
 	ui       = NewUI()
 	model    = NewModel()
 	player   = NewPlayer()
+	recorder = NewRecorder()
 	digitakt *Input
 	digitone *Input
 )
@@ -32,30 +33,13 @@ func main() {
 	must(err)
 	defer termbox.Close()
 
-	digitakt, _ = OpenInput("Elektron Digitakt")
-	digitone, _ = OpenInput("Elektron Digitone")
-
 	player.Play(model.Track, 0)
+	recorder.Listen(model.Track.Settings.InputPortNames())
 
 	var (
 		eventC = make(chan termbox.Event)
-		midiC  = make(chan Message)
+		midiC  = recorder.C()
 	)
-
-	if digitakt != nil {
-		go func() {
-			for m := range digitakt.In() {
-				midiC <- Message{m, "Digitakt"}
-			}
-		}()
-	}
-	if digitone != nil {
-		go func() {
-			for m := range digitone.In() {
-				midiC <- Message{m, "Digitone"}
-			}
-		}()
-	}
 
 	go func() {
 		for {
@@ -138,9 +122,10 @@ func main() {
 				model.State = Viewing
 			}
 			if model.State == Recording {
-				model.Track.Seq.Insert(m.Device, model.Head, m.Message)
+				model.Track.Seq.Insert(m.Port, model.Head, m.Message)
 			}
 		}
+		recorder.Listen(model.Track.Settings.InputPortNames())
 		if model.State == Playing {
 			switch tick {
 			case 12:
