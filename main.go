@@ -122,7 +122,7 @@ func main() {
 				model.State = Viewing
 			}
 			if model.State == Recording {
-				model.Track.Seq.Insert(m.Port, model.Head, m.Message)
+				model.Track.Seq.Insert(m.Port, model.Head, m.Message, model.Track.Settings)
 			}
 		}
 		recorder.Listen(model.Track.Settings.InputPortNames())

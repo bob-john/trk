@@ -54,34 +54,60 @@ func (s *Seq) Write(f io.Writer) error {
 	return w.Error()
 }
 
-func (s *Seq) Insert(device string, row int, message midi.Message) {
-	r := s.Row(row).Copy()
-	switch m := message.(type) {
-	case channel.ProgramChange:
-		if strings.Contains(device, "Digitone") {
-			r.Parts[Digitone].Pattern = Pattern(m.Program())
+func (s *Seq) Insert(port string, row int, message midi.Message, settings *Settings) {
+	dup := s.Row(row).Copy()
+	for name, part := range dup.Parts {
+		device, ok := settings.Devices[name]
+		if !ok {
+			continue
 		}
-		if strings.Contains(device, "Digitakt") {
-			r.Parts[Digitakt].Pattern = Pattern(m.Program())
+		if _, ok := device.Inputs[port]; !ok {
+			continue
 		}
+		switch m := message.(type) {
+		case channel.ProgramChange:
+			part.Pattern = Pattern(m.Program())
 
-	case channel.ControlChange:
-		if m.Controller() != 94 {
-			return
-		}
-		ch := int(m.Channel())
-		if r.Parts[Digitone].Channels.Contains(ch) {
-			r.Parts[Digitone].Mute = s.ConsolidatedRow(row).Parts[Digitone].Mute.Copy()
-			r.Parts[Digitone].Mute[r.Parts[Digitone].Channels.IndexOf(ch)] = m.Value() != 0
-		}
-		if r.Parts[Digitakt].Channels.Contains(ch) {
-			r.Parts[Digitakt].Mute = s.ConsolidatedRow(row).Parts[Digitakt].Mute.Copy()
-			r.Parts[Digitakt].Mute[r.Parts[Digitakt].Channels.IndexOf(ch)] = m.Value() != 0
+		case channel.ControlChange:
+			if m.Controller() != 94 {
+				return
+			}
+			ch := int(m.Channel())
+			part.Mute = s.ConsolidatedRow(row).Parts[name].Mute.Copy()
+			part.Mute[part.Channels.IndexOf(ch)] = m.Value() != 0
 		}
 	}
-	if r.HasChanges(s.ConsolidatedRow(row)) {
-		s.row[row] = r
+	if dup.HasChanges(s.ConsolidatedRow(row)) {
+		s.row[row] = dup
 	}
+
+	// r := s.Row(row).Copy()
+	// switch m := message.(type) {
+	// case channel.ProgramChange:
+	// 	if strings.Contains(device, "Digitone") {
+	// 		r.Parts[Digitone].Pattern = Pattern(m.Program())
+	// 	}
+	// 	if strings.Contains(device, "Digitakt") {
+	// 		r.Parts[Digitakt].Pattern = Pattern(m.Program())
+	// 	}
+
+	// case channel.ControlChange:
+	// 	if m.Controller() != 94 {
+	// 		return
+	// 	}
+	// 	ch := int(m.Channel())
+	// 	if r.Parts[Digitone].Channels.Contains(ch) {
+	// 		r.Parts[Digitone].Mute = s.ConsolidatedRow(row).Parts[Digitone].Mute.Copy()
+	// 		r.Parts[Digitone].Mute[r.Parts[Digitone].Channels.IndexOf(ch)] = m.Value() != 0
+	// 	}
+	// 	if r.Parts[Digitakt].Channels.Contains(ch) {
+	// 		r.Parts[Digitakt].Mute = s.ConsolidatedRow(row).Parts[Digitakt].Mute.Copy()
+	// 		r.Parts[Digitakt].Mute[r.Parts[Digitakt].Channels.IndexOf(ch)] = m.Value() != 0
+	// 	}
+	// }
+	// if r.HasChanges(s.ConsolidatedRow(row)) {
+	// 	s.row[row] = r
+	// }
 }
 
 func (s *Seq) Row(index int) *Row {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/gomidi/midi"
 	"github.com/gomidi/midi/midimessage/channel"
 )
@@ -66,6 +68,7 @@ func (p *Player) playMute(mute Mute, device *DeviceSettings) {
 }
 
 func (p *Player) Write(names map[string]struct{}, message midi.Message) {
+	fmt.Println("Write", names, message)
 	var err error
 	required := make(map[string]bool)
 	for name := range names {
