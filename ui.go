@@ -245,6 +245,8 @@ func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
 		return
 	}
 	switch e.Key {
+	case termbox.KeyEnter:
+		p.selected = (p.selected + 1) % len(p.values)
 	case termbox.KeyArrowRight:
 		p.selected++
 	case termbox.KeyArrowLeft:

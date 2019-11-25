@@ -5,7 +5,7 @@ IN PROGRESS
 NEXT
 ====
 + Bug
-- Should not be able to clear first step
+- Should not be able to clear first step. Or should be able to undo (delete again or Ctrl+Z).
 
 + Improvements
 - Center dialog
@@ -13,6 +13,7 @@ NEXT
 
 + Features
 - Temp file saved and restored automatically. Ctrl+S to save explicitely. Ctrl+L or R to reload from disk (with confirmation).
-- Add pattern length + global scale.
-- Song part?
+- Add pattern length + global scale + bank scale + pattern scale.
+- Song part? Could be bank + 16 patterns with bank length. Ctrl+PgUp/PgDn to change bank. Have an "original" mode with 8 banks of 16 patterns and an extended mode of 25 banks of 99 patterns.
+- Ctrl+Z
 - Display help

@@ -254,7 +254,7 @@ func options() *OptionPage {
 			addOutputs(page, s)
 		})
 		p.AddMenu("Program Change", func(page *OptionPage) {
-			page.AddPicker("Record", []string{"Digitatk", "Digitone", "Both"}, int(s.ProgChgSrc), func(selected int) {
+			page.AddPicker("Record from", []string{"Digitatk", "Digitone", "Both"}, int(s.ProgChgSrc), func(selected int) {
 				s.ProgChgSrc = DeviceSource(selected)
 			})
 			page.AddPicker("Input channel", channels, s.ProgChgInCh, func(selected int) {
@@ -265,7 +265,7 @@ func options() *OptionPage {
 			})
 		})
 		p.AddMenu("Mute", func(page *OptionPage) {
-			page.AddPicker("Receive from", []string{"Digitatk", "Digitone", "Both"}, int(s.MuteSrc), func(selected int) {
+			page.AddPicker("Record from", []string{"Digitatk", "Digitone", "Both"}, int(s.MuteSrc), func(selected int) {
 				s.MuteSrc = DeviceSource(selected)
 			})
 			for n := 0; n < 16; n++ {

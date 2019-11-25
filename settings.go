@@ -13,18 +13,22 @@ type Settings struct {
 func NewSettings() *Settings {
 	return &Settings{
 		Digitakt: &DeviceSettings{
-			Inputs:     make(map[string]struct{}),
-			Outputs:    make(map[string]struct{}),
-			Channels:   make(map[int]struct{}),
-			ProgChgSrc: DeviceSourceDigitakt,
-			MuteSrc:    DeviceSourceDigitakt,
+			Inputs:       make(map[string]struct{}),
+			Outputs:      make(map[string]struct{}),
+			ProgChgSrc:   DeviceSourceDigitakt,
+			ProgChgInCh:  10,
+			ProgChgOutCh: 10,
+			MuteSrc:      DeviceSourceDigitakt,
+			Channels:     make(map[int]struct{}),
 		},
 		Digitone: &DeviceSettings{
-			Inputs:     make(map[string]struct{}),
-			Outputs:    make(map[string]struct{}),
-			Channels:   make(map[int]struct{}),
-			ProgChgSrc: DeviceSourceDigitone,
-			MuteSrc:    DeviceSourceDigitone,
+			Inputs:       make(map[string]struct{}),
+			Outputs:      make(map[string]struct{}),
+			ProgChgSrc:   DeviceSourceDigitone,
+			ProgChgInCh:  10,
+			ProgChgOutCh: 10,
+			MuteSrc:      DeviceSourceDigitone,
+			Channels:     make(map[int]struct{}),
 		},
 	}
 }
