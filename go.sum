@@ -70,8 +70,13 @@ github.com/sqweek/dialog v0.0.0-20190728103509-6254ed5b0d3c h1:nQyaARR8WzWW4/Aox
 github.com/sqweek/dialog v0.0.0-20190728103509-6254ed5b0d3c/go.mod h1:QSrNdZLZB8VoFPGlZ2vDuA2oNaVdhld3g0PZLc7soX8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+gitlab.com/gomidi/midi v1.10.0/go.mod h1:Geyousi3Lg15GJRg0CnpxQMQIgDLapqJKq2Cbf7LJfs=
 gitlab.com/gomidi/midi v1.13.3 h1:KTKqNSu6y6MGiEbNOqMDiWHDv+YtI66hLSltwNJMYtM=
 gitlab.com/gomidi/midi v1.13.3/go.mod h1:3ohtNOhqoSakkuLG/Li1OI6I3J1c2LErnJF5o/VBq1c=
+gitlab.com/gomidi/rtmididrv v0.4.2 h1:FZXFmbaG4WS80PFiLl7c7t/U6vX2YoUmT4Sc1aYzDhM=
+gitlab.com/gomidi/rtmididrv v0.4.2/go.mod h1:VhFVcVgiHPm3a7alT/f3ipf8G1s9ehNsr/TmVYJ7b5w=
+gitlab.com/gomidi/rtmididrv/imported/rtmidi v0.0.0-20191025100939-514fe0ed97a6 h1:0XqAH/BAxH5TTBzIWkdlZqpp6VUx6DFcQnMWW6G6hIc=
+gitlab.com/gomidi/rtmididrv/imported/rtmidi v0.0.0-20191025100939-514fe0ed97a6/go.mod h1:FYVFN2H23IsX56VntiDF9DgCIekHh359wW+iMl1W8rQ=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190626150813-e07cf5db2756/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20191008105621-543471e840be h1:QAcqgptGM8IQBC9K/RC4o+O9YmqEm0diQn9QmZw/0mU=

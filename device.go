@@ -39,6 +39,7 @@ func (d *Device) Close() {
 }
 
 type Input struct {
+	name string
 	in  mid.In
 	inC chan midi.Message
 }
@@ -75,7 +76,7 @@ func OpenInput(name string) (*Input, error) {
 			inC <- m
 		}
 	}()
-	return &Input{in, inC}, nil
+	return &Input{name, in, inC}, nil
 }
 
 func (i *Input) Close() error {
@@ -91,8 +92,8 @@ func (i *Input) In() <-chan midi.Message {
 	return i.inC
 }
 
-func (i *Input) String() string {
-	return i.in.String()
+func (i *Input) Name() string {
+	return i.name
 }
 
 type Output struct {

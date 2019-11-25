@@ -16,7 +16,7 @@ func NewRecorder() *Recorder {
 			required := make(map[string]bool)
 			for _, name := range names {
 				if _, ok := opened[name]; !ok {
-					input, err := OpenInput(name)
+					port, err := OpenInput(name)
 					if err != nil {
 						continue
 					}
@@ -24,10 +24,10 @@ func NewRecorder() *Recorder {
 					go func() {
 						for {
 							select {
-							case m := <-input.In():
-								c <- Message{m, input.String()}
+							case m := <-port.In():
+								c <- Message{m, port.Name()}
 							case <-quit:
-								input.Close()
+								port.Close()
 								return
 							}
 						}

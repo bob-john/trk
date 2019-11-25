@@ -14,6 +14,7 @@ require (
 	github.com/rivo/tview v0.0.0-20191121195645-2d957c4be01d
 	github.com/sqweek/dialog v0.0.0-20190728103509-6254ed5b0d3c
 	gitlab.com/gomidi/midi v1.13.3
+	gitlab.com/gomidi/rtmididrv v0.4.2
 )
 
 go 1.13
