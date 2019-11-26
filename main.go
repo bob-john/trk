@@ -224,15 +224,15 @@ func options() *OptionPage {
 				})
 			}
 		}
-		addOutputs := func(page *OptionPage) {
+		addOutputs := func(page *OptionPage, ports *[]string) {
 			for _, port := range outputs {
 				name := port.String()
-				on := Contains(part.PortOut, name)
-				page.AddCheckbox(" "+port.String(), on, func(on bool) {
+				on := Contains(*ports, name)
+				page.AddCheckbox(" "+name, on, func(on bool) {
 					if on {
-						part.PortOut = Insert(part.PortOut, name)
+						*ports = Insert(*ports, name)
 					} else {
-						part.PortOut = Remove(part.PortOut, name)
+						*ports = Remove(*ports, name)
 					}
 					must(trk.Save(part))
 				})
@@ -245,10 +245,12 @@ func options() *OptionPage {
 		page.AddMenu("PORT CONFIG", func(page *OptionPage) {
 			page.AddLabel("PROG CHG PORT IN")
 			addInputs(page, &part.ProgChgPortIn)
+			page.AddLabel("PROG CHG PORT OUT")
+			addOutputs(page, &part.ProgChgPortOut)
 			page.AddLabel("MUTE PORT IN")
 			addInputs(page, &part.MutePortIn)
-			page.AddLabel("PORT OUT")
-			addOutputs(page)
+			page.AddLabel("MUTE PORT OUT")
+			addOutputs(page, &part.MutePortOut)
 		})
 		page.AddMenu("CHANNELS", func(page *OptionPage) {
 			for n, ch := range part.Track {

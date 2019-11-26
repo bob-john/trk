@@ -26,18 +26,19 @@ func OpenTrack(name string) (*storm.DB, error) {
 }
 
 type Part1 struct {
-	Name          string `storm:"id"`
-	ShortName     string
-	Track         []int
-	ProgChgPortIn []string
-	MutePortIn    []string
-	PortOut       []string
-	ProgChgInCh   int
-	ProgChgOutCh  int
+	Name           string `storm:"id"`
+	ShortName      string
+	Track          []int
+	ProgChgPortIn  []string
+	ProgChgPortOut []string
+	MutePortIn     []string
+	MutePortOut    []string
+	ProgChgInCh    int
+	ProgChgOutCh   int
 }
 
 func NewPart1(name, shortName string, trackCount int) *Part1 {
-	return &Part1{name, shortName, make([]int, trackCount), nil, nil, nil, 10, 10}
+	return &Part1{name, shortName, make([]int, trackCount), nil, nil, nil, nil, 10, 10}
 }
 
 type PatternChange struct {
