@@ -255,7 +255,7 @@ func options() *OptionPage {
 		page.AddMenu("CHANNELS", func(page *OptionPage) {
 			for n, ch := range part.Track {
 				n := n
-				page.AddPicker(fmt.Sprintf("TRACK %d CH", 1+n), channels, ch, func(ch int) {
+				page.AddPicker(FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
 					part.Track[n] = ch
 					must(trk.Save(part))
 				})

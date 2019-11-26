@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"fmt"
 	"os"
 	"time"
 
@@ -14,11 +15,11 @@ func OpenTrack(name string) (*storm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = trk.Save(NewPart1("DIGITAKT", "DT", 8))
+	err = trk.Save(NewPart1("DIGITAKT", "DT", 16))
 	if err != nil {
 		return nil, err
 	}
-	err = trk.Save(NewPart1("DIGITONE", "DB", 4))
+	err = trk.Save(NewPart1("DIGITONE", "DB", 8))
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +52,25 @@ type MuteChange struct {
 	Tick int    `storm:"id"`
 	Part string `storm:"index"`
 	Mute [16]bool
+}
+
+func FormatTrackName(part string, n int) string {
+	switch part {
+	case "DIGITAKT":
+		if n < 8 {
+			return fmt.Sprintf("TRACK %d", 1+n)
+		}
+		return fmt.Sprintf("TRACK %s", string('A'+n-8))
+
+	case "DIGITONE":
+		if n < 4 {
+			return fmt.Sprintf("TRACK %d", 1+n)
+		}
+		return fmt.Sprintf("MIDI %d", 1+n-4)
+
+	default:
+		return fmt.Sprintf("TRACK %d", 1+n)
+	}
 }
 
 type Track struct {
