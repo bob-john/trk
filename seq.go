@@ -353,65 +353,83 @@ func (m Mute) Copy() Mute {
 	return cpy
 }
 
-type ProgramChange struct {
-	Channel, Program int
+type Seq0 struct {
+	Parts []*Part0
 }
 
-func (pc ProgramChange) Match(o ProgramChange) bool {
-	return pc.Channel == o.Channel
+func NewSeq0() *Seq0 {
+	return &Seq0{Parts: []*Part0{NewPart0(Digitakt), NewPart0(Digitone)}}
 }
 
-type ControlChange struct {
-	Channel, Controller, Value int
+type Part0 struct {
+	Device  string
+	Pattern map[int]Pattern0
+	Mute    map[int]Mute0
 }
 
-func (cc ControlChange) Match(o ControlChange) bool {
-	return cc.Channel == o.Channel && cc.Controller == o.Controller
+func NewPart0(device string) *Part0 {
+	return &Part0{device, make(map[int]Pattern0), make(map[int]Mute0)}
 }
 
-type Track0 struct {
-	device  string
-	pattern map[int]int
-	mute    map[int][16]bool
+func (t *Part0) SetPattern(tick int, pattern Pattern0) {
+	t.Pattern[tick] = pattern
 }
 
-func NewTrack0(device string) *Track0 {
-	return &Track0{device, make(map[int]int), make(map[int][16]bool)}
-}
-
-func (t *Track0) SetPattern(tick int, pattern int) {
-	t.pattern[tick] = pattern
-}
-
-func (t *Track0) Pattern(tick int) int {
-	pattern, ok := t.pattern[tick]
+func (t *Part0) ConsolidatedPattern(tick int) Pattern0 {
+	pattern, ok := t.Pattern[tick]
 	if ok {
 		return pattern
 	}
 	if tick > 0 {
-		pattern = t.Pattern(tick - 1)
+		pattern = t.ConsolidatedPattern(tick - 1)
 	}
-	t.pattern[tick] = pattern
+	t.Pattern[tick] = pattern
 	return pattern
 }
 
-func (t *Track0) SetMute(tick int, track int, muted bool) {
+func (t *Part0) SetMute(tick int, track int, muted bool) {
 	if track < 0 || track >= 16 {
 		return
 	}
-	mute := t.Mute(tick)
+	mute := t.ConsolidatedMute(tick)
 	mute[track] = muted
-	t.mute[tick] = mute
+	t.Mute[tick] = mute
 }
 
-func (t *Track0) Mute(tick int) [16]bool {
-	mute, ok := t.mute[tick]
+func (t *Part0) ConsolidatedMute(tick int) Mute0 {
+	mute, ok := t.Mute[tick]
 	if ok {
 		return mute
 	}
 	if tick > 0 {
-		mute = t.Mute(tick - 1)
+		mute = t.ConsolidatedMute(tick - 1)
 	}
-	t.mute[tick] = mute
+	t.Mute[tick] = mute
 	return mute
+}
+
+type Pattern0 int
+
+func (p Pattern0) Format(modified bool) string {
+	if modified {
+		return fmt.Sprintf("%s%02d", string('A'+int(p)/16), 1+int(p)%16)
+	}
+	return "..."
+}
+
+type Mute0 [16]bool
+
+func (m Mute0) Format(channelCount int, modified bool) string {
+	if modified {
+		var str string
+		for n, muted := range m[:channelCount] {
+			if muted {
+				str += "-"
+			} else {
+				str += strconv.Itoa(1 + n)
+			}
+		}
+
+	}
+	return strings.Repeat(".", channelCount)
 }

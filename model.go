@@ -3,13 +3,14 @@ package main
 import "os"
 
 type Model struct {
+	Seq0  *Seq0
 	Track *Track
 	Head  int
 	State State
 }
 
 func NewModel() *Model {
-	return new(Model)
+	return &Model{Seq0: NewSeq0()}
 }
 
 func (m *Model) LoadTrack(path string) error {

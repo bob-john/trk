@@ -1,6 +1,7 @@
 module trk
 
 require (
+	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/fatih/color v1.7.0
 	github.com/go-openapi/jsonpointer v0.19.3
 	github.com/gomidi/midi v1.6.2

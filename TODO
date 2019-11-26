@@ -1,7 +1,8 @@
 IN PROGRESS
 ===========
-- Fix recording (mute & pattern) -> see Track0
-- Improve play (only send message for changes from the actual current state of the player)
+- ? Fix recording (mute & pattern) -> see Part0
+- ! Improve play (only send message for changes from the actual current state of the player)
+- Be careful with changes: recording events on a step should be kept event if the event is the same as the previous *at the time of the recording*.
 
 NEXT
 ====
@@ -20,6 +21,7 @@ NEXT
 - Display help
 
 + Refactoring
+- BoltDB?
 - Row -> Step
 - map[int]Row{[]Part} -> []Part{map[int]Step}
 - DeviceSettings{map[string]struct{}} -> DeviceSettings{[]string}
