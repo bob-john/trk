@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/asdine/storm"
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
@@ -15,18 +16,25 @@ var (
 	model    = NewModel()
 	player   = NewPlayer()
 	recorder = NewRecorder()
+	trk      *storm.DB
 	digitakt *Input
 	digitone *Input
 )
 
 func main() {
+	var err error
+
 	if len(os.Args) != 2 {
 		fmt.Println("usage: trk <path>")
 		fmt.Println("trk: invalid command")
 		os.Exit(1)
 	}
 
-	err := model.LoadTrack(os.Args[1])
+	trk, err = OpenTrack(os.Args[1])
+	must(err)
+	defer trk.Close()
+
+	err = model.LoadTrack(os.Args[1])
 	must(err)
 
 	err = termbox.Init()
@@ -201,71 +209,106 @@ func options() *OptionPage {
 		inputs, _  = driver.Ins()
 		outputs, _ = driver.Outs()
 	)
-	addDeviceOptions := func(p *OptionPage, s *DeviceSettings) {
-		addInputs := func(p *OptionPage, s *DeviceSettings) {
+	addPartOptions := func(page *OptionPage, part *Part1) {
+		addInputs := func(page *OptionPage, ports *[]string) {
 			for _, port := range inputs {
 				name := port.String()
-				_, on := s.Inputs[name]
-				p.AddCheckbox(" "+port.String(), on, func(on bool) {
+				on := Contains(*ports, name)
+				page.AddCheckbox(" "+name, on, func(on bool) {
 					if on {
-						s.Inputs[name] = struct{}{}
+						*ports = Insert(*ports, name)
 					} else {
-						delete(s.Inputs, name)
+						*ports = Remove(*ports, name)
 					}
+					must(trk.Save(part))
 				})
 			}
 		}
-		addOutputs := func(p *OptionPage, s *DeviceSettings) {
+		addOutputs := func(page *OptionPage) {
 			for _, port := range outputs {
 				name := port.String()
-				_, on := s.Outputs[name]
-				p.AddCheckbox(" "+port.String(), on, func(on bool) {
+				on := Contains(part.PortOut, name)
+				page.AddCheckbox(" "+port.String(), on, func(on bool) {
 					if on {
-						s.Outputs[name] = struct{}{}
+						part.PortOut = Insert(part.PortOut, name)
 					} else {
-						delete(s.Outputs, name)
+						part.PortOut = Remove(part.PortOut, name)
 					}
+					must(trk.Save(part))
 				})
 			}
 		}
-		var channels = []string{"Off"}
+		var channels = []string{"OFF"}
 		for n := 0; n < 16; n++ {
 			channels = append(channels, strconv.Itoa(1+n))
 		}
-		p.AddMenu("Port config", func(page *OptionPage) {
-			page.AddLabel("Input")
-			addInputs(page, s)
-			page.AddLabel("Output")
-			addOutputs(page, s)
+		page.AddMenu("PORT CONFIG", func(page *OptionPage) {
+			page.AddLabel("PROG CHG PORT IN")
+			addInputs(page, &part.ProgChgPortIn)
+			page.AddLabel("MUTE PORT IN")
+			addInputs(page, &part.MutePortIn)
+			page.AddLabel("PORT OUT")
+			addOutputs(page)
 		})
-		p.AddMenu("Program Change", func(page *OptionPage) {
-			page.AddPicker("Record from", []string{"Digitatk", "Digitone", "Both"}, int(s.ProgChgSrc), func(selected int) {
-				s.ProgChgSrc = DeviceSource(selected)
-			})
-			page.AddPicker("Input channel", channels, s.ProgChgInCh, func(selected int) {
-				s.ProgChgInCh = selected
-			})
-			page.AddPicker("Output channel", channels, s.ProgChgOutCh, func(selected int) {
-				s.ProgChgOutCh = selected
-			})
-		})
-		p.AddMenu("Mute", func(page *OptionPage) {
-			page.AddPicker("Record from", []string{"Digitatk", "Digitone", "Both"}, int(s.MuteSrc), func(selected int) {
-				s.MuteSrc = DeviceSource(selected)
-			})
-			for n, ch := range s.Channels {
+		page.AddMenu("CHANNELS", func(page *OptionPage) {
+			for n, ch := range part.Track {
 				n := n
-				page.AddPicker(fmt.Sprintf("Track %d channel", 1+n), channels, ch, func(ch int) {
-					s.Channels[n] = ch
+				page.AddPicker(fmt.Sprintf("TRACK %d CH", 1+n), channels, ch, func(ch int) {
+					part.Track[n] = ch
+					must(trk.Save(part))
 				})
 			}
+			page.AddPicker("PROG CHG IN CH", channels, part.ProgChgInCh, func(selected int) {
+				part.ProgChgInCh = selected
+				must(trk.Save(part))
+			})
+			page.AddPicker("PROG CHG OUT CH", channels, part.ProgChgOutCh, func(selected int) {
+				part.ProgChgOutCh = selected
+				must(trk.Save(part))
+			})
 		})
 	}
-	options := NewOptionPage("MIDI config")
-	for name, settings := range model.Track.Settings.Devices {
-		options.AddMenu(name, func(page *OptionPage) {
-			addDeviceOptions(page, settings)
+	var parts []*Part1
+	err := trk.All(&parts)
+	must(err)
+	options := NewOptionPage("MIDI CONFIG")
+	for _, part := range parts {
+		options.AddMenu(part.Name, func(page *OptionPage) {
+			addPartOptions(page, part)
 		})
 	}
 	return options
+}
+
+func Contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func IndexOf(a []string, x string) int {
+	for i, n := range a {
+		if n == x {
+			return i
+		}
+	}
+	return -1
+}
+
+func Insert(a []string, x string) []string {
+	if Contains(a, x) {
+		return a
+	}
+	return append(a, x)
+}
+
+func Remove(a []string, x string) []string {
+	i := IndexOf(a, x)
+	if i == -1 {
+		return a
+	}
+	return append(a[:i], a[i+1:]...)
 }

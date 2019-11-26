@@ -1,7 +1,9 @@
 module trk
 
 require (
-	github.com/boltdb/bolt v1.3.1 // indirect
+	github.com/asdine/storm v2.1.2+incompatible
+	github.com/boltdb/bolt v1.3.1
+	github.com/br0xen/boltbrowser v0.0.0-20191017165624-2970b1c9121c // indirect
 	github.com/fatih/color v1.7.0
 	github.com/go-openapi/jsonpointer v0.19.3
 	github.com/gomidi/midi v1.6.2
@@ -16,6 +18,8 @@ require (
 	github.com/sqweek/dialog v0.0.0-20190728103509-6254ed5b0d3c
 	gitlab.com/gomidi/midi v1.13.3
 	gitlab.com/gomidi/rtmididrv v0.4.2
+	go.etcd.io/bbolt v1.3.3
+	golang.org/x/sys v0.0.0-20191126131656-8a8471f7e56d // indirect
 )
 
 go 1.13

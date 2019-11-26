@@ -1,7 +1,5 @@
 package main
 
-import "os"
-
 type Model struct {
 	Seq0  *Seq0
 	Track *Track
@@ -14,13 +12,14 @@ func NewModel() *Model {
 }
 
 func (m *Model) LoadTrack(path string) error {
-	var err error
-	m.Track, err = ReadTrack(path)
-	if os.IsNotExist(err) {
-		m.Track = NewTrack()
-	} else if err != nil {
-		return err
-	}
+	m.Track = NewTrack()
+	// var err error
+	// m.Track, err = ReadTrack(path)
+	// if os.IsNotExist(err) {
+	// 	m.Track = NewTrack()
+	// } else if err != nil {
+	// 	return err
+	// }
 	return nil
 }
 

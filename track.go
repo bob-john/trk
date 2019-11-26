@@ -3,7 +3,54 @@ package main
 import (
 	"archive/zip"
 	"os"
+	"time"
+
+	"github.com/asdine/storm"
+	"go.etcd.io/bbolt"
 )
+
+func OpenTrack(name string) (*storm.DB, error) {
+	trk, err := storm.Open(name, storm.BoltOptions(0600, &bbolt.Options{Timeout: 1 * time.Second}))
+	if err != nil {
+		return nil, err
+	}
+	err = trk.Save(NewPart1("DIGITAKT", "DT", 8))
+	if err != nil {
+		return nil, err
+	}
+	err = trk.Save(NewPart1("DIGITONE", "DB", 4))
+	if err != nil {
+		return nil, err
+	}
+	return trk, nil
+}
+
+type Part1 struct {
+	Name          string `storm:"id"`
+	ShortName     string
+	Track         []int
+	ProgChgPortIn []string
+	MutePortIn    []string
+	PortOut       []string
+	ProgChgInCh   int
+	ProgChgOutCh  int
+}
+
+func NewPart1(name, shortName string, trackCount int) *Part1 {
+	return &Part1{name, shortName, make([]int, trackCount), nil, nil, nil, 10, 10}
+}
+
+type PatternChange struct {
+	Tick    int    `storm:"id"`
+	Part    string `storm:"index"`
+	Pattern int
+}
+
+type MuteChange struct {
+	Tick int    `storm:"id"`
+	Part string `storm:"index"`
+	Mute [16]bool
+}
 
 type Track struct {
 	Seq      *Seq
