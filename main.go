@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 
@@ -79,15 +78,8 @@ func main() {
 					ui.Show(NewDialog(5, 5, options()))
 
 				case termbox.KeyCtrlS:
-					err := model.Track.Write(os.Args[1])
-					if err != nil {
-						log.Fatal(err)
-					}
+					//FIXME
 				case termbox.KeyEsc:
-					err := model.Track.Write(os.Args[1])
-					if err != nil {
-						log.Fatal(err)
-					}
 					done = true
 
 				case termbox.KeyPgup:
@@ -185,20 +177,38 @@ func color(on, ch bool) (fg termbox.Attribute) {
 
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	row, org := model.Track.Seq.ConsolidatedRow(model.Head), model.Track.Seq.Row(model.Head)
 	var y int
-	for name, part := range row.Parts {
-		DrawString(4, y, name+":", termbox.ColorDefault, termbox.ColorDefault)
-		DrawString(4+len(name)+2, y, part.Pattern.String(), color(false, org.Parts[name].Pattern != -1), termbox.ColorDefault)
-		DrawString(8+len(name)+2, y, part.Mute.Format(part.Channels), color(false, len(org.Parts[name].Mute) != 0), termbox.ColorDefault)
+	var parts []*Part1
+	err := trk.All(&parts)
+	must(err)
+	for _, part := range parts {
+		var (
+			pattern, patternChanged = part.Pattern(trk, model.Head)
+			mute, muteChanged       = part.Mute(trk, model.Head)
+		)
+		DrawString(4, y, part.ShortName, color(false, patternChanged || muteChanged), termbox.ColorDefault)
+		DrawString(4+len(part.ShortName)+1, y, FormatPattern(pattern), color(false, patternChanged), termbox.ColorDefault)
+		DrawString(8+len(part.ShortName)+1, y, FormatMute(mute, part), color(false, muteChanged), termbox.ColorDefault)
 		y++
 	}
 	y++
 	DrawString(0, y, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
-		n := n
-		ch := model.HeadForTrig(n) == 0 || model.Track.Seq.Row(model.HeadForTrig(n)).HasChanges(model.Track.Seq.Row(model.HeadForTrig(n-1)))
-		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, ch), termbox.ColorDefault)
+		var (
+			head     = model.HeadForTrig(n)
+			modified = head == 0
+		)
+		for _, part := range parts {
+			if _, changed := part.Pattern(trk, head); changed {
+				modified = true
+				break
+			}
+			if _, changed := part.Mute(trk, head); changed {
+				modified = true
+				break
+			}
+		}
+		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, modified), termbox.ColorDefault)
 	}
 	ui.Render()
 	termbox.Flush()
@@ -253,10 +263,10 @@ func options() *OptionPage {
 			addOutputs(page, &part.MutePortOut)
 		})
 		page.AddMenu("CHANNELS", func(page *OptionPage) {
-			for n, ch := range part.Track {
+			for n, ch := range part.TrackCh {
 				n := n
 				page.AddPicker(FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
-					part.Track[n] = ch
+					part.TrackCh[n] = ch
 					must(trk.Save(part))
 				})
 			}

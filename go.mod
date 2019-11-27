@@ -4,6 +4,7 @@ require (
 	github.com/asdine/storm v2.1.2+incompatible
 	github.com/boltdb/bolt v1.3.1
 	github.com/br0xen/boltbrowser v0.0.0-20191017165624-2970b1c9121c // indirect
+	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/fatih/color v1.7.0
 	github.com/go-openapi/jsonpointer v0.19.3
 	github.com/gomidi/midi v1.6.2
