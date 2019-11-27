@@ -48,7 +48,7 @@ func SetMute(trk *Track, part *Part, tick int, mute [16]bool) error {
 }
 
 func SetMuted(trk *Track, part *Part, tick int, track int, muted bool) error {
-	mute, _ := Mute(trk, part, tick)
+	mute := Mute(trk, part, tick)
 	mute[track] = muted
 	return SetMute(trk, part, tick, mute)
 }

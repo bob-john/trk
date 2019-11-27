@@ -30,6 +30,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = termbox.Init()
+	must(err)
+	defer termbox.Close()
+
 	trk, err = track.Open(os.Args[1])
 	must(err)
 	defer trk.Close()
@@ -37,11 +41,7 @@ func main() {
 	err = model.LoadTrack(os.Args[1])
 	must(err)
 
-	err = termbox.Init()
-	must(err)
-	defer termbox.Close()
-
-	player.Play(model.Track, 0)
+	player.Play(trk, 0)
 	recorder.Listen(track.InputPorts(trk))
 
 	var (
@@ -152,17 +152,17 @@ func main() {
 		if model.State == Playing {
 			switch tick {
 			case 12:
-				player.PlayPattern(model.Track, model.Head+2)
+				// player.PlayPattern(model.Track, model.Head+2)
 
 			case 18:
-				player.PlayMute(model.Track, model.Head+1)
+				// player.PlayMute(model.Track, model.Head+1)
 
 			case 24:
 				model.Head++
 				tick = 0
 			}
 		} else if model.Head != oldHead {
-			player.Play(model.Track, model.Head)
+			player.Play(trk, model.Head)
 		}
 		render()
 	}
@@ -179,59 +179,53 @@ func clamp(val, min, max int) int {
 	return val
 }
 
-func color(on, ch bool) (fg termbox.Attribute) {
-	if ch {
-		fg = termbox.ColorRed
-	}
-	if !on {
-		return
-	}
-	switch model.State {
-	case Playing:
-		fg = termbox.ColorGreen
-	case Recording:
-		fg = termbox.ColorRed
-	}
-	fg = fg | termbox.AttrReverse
-	return
-}
-
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	var y int
+	var fg, bg termbox.Attribute
+	var recording = model.State == Recording
 	parts, err := track.Parts(trk)
 	must(err)
 	for _, part := range parts {
 		var (
-			pattern, patternChanged = track.Pattern(trk, part, model.Head)
-			mute, muteChanged       = track.Mute(trk, part, model.Head)
+			pattern = track.Pattern(trk, part, model.Head)
+			mute    = track.Mute(trk, part, model.Head)
 		)
-		DrawString(4, y, part.ShortName, color(false, patternChanged || muteChanged), termbox.ColorDefault)
-		DrawString(4+len(part.ShortName)+1, y, track.FormatPattern(pattern), color(false, patternChanged), termbox.ColorDefault)
-		DrawString(8+len(part.ShortName)+1, y, track.FormatMute(mute, part), color(false, muteChanged), termbox.ColorDefault)
+		fg, bg = colors(false, recording, track.IsPartModified(trk, part, model.Head))
+		DrawString(4, y, part.ShortName, fg, bg)
+		fg, bg = colors(false, recording, track.IsPatternModified(trk, part, model.Head))
+		DrawString(4+len(part.ShortName)+1, y, track.FormatPattern(pattern), fg, bg)
+		fg, bg = colors(false, recording, track.IsMuteModified(trk, part, model.Head))
+		DrawString(8+len(part.ShortName)+1, y, track.FormatMute(mute, part), fg, termbox.ColorDefault)
 		y++
 	}
 	y++
 	DrawString(0, y, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		var (
-			head     = model.HeadForTrig(n)
-			modified = head == 0
+			tick   = model.HeadForTrig(n)
+			fg, bg = colors(n == model.Head%16, recording, track.IsModified(trk, tick))
 		)
-		for _, part := range parts {
-			if _, changed := track.Pattern(trk, part, head); changed {
-				modified = true
-				break
-			}
-			if _, changed := track.Mute(trk, part, head); changed {
-				modified = true
-				break
-			}
-		}
-		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), color(n == model.Head%16, modified), termbox.ColorDefault)
+		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), fg, bg)
 	}
 	ui.Render()
 	termbox.Flush()
+}
+
+func colors(highlighted, recording, modified bool) (termbox.Attribute, termbox.Attribute) {
+	if highlighted {
+		if recording {
+			return termbox.ColorDefault, termbox.ColorRed
+		}
+		if modified {
+			return termbox.ColorRed, termbox.ColorWhite
+		}
+		return termbox.ColorBlack, termbox.ColorWhite
+	}
+	if modified {
+		return termbox.ColorRed, termbox.ColorDefault
+	}
+	return termbox.ColorDefault, termbox.ColorDefault
 }
 
 func options() *OptionPage {

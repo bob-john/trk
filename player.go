@@ -1,89 +1,136 @@
 package main
 
 import (
+	"trk/track"
+
 	"github.com/gomidi/midi"
 	"github.com/gomidi/midi/midimessage/channel"
+	"gitlab.com/gomidi/midi/mid"
 )
 
 type Player struct {
-	output map[string]*Output
+	ports map[string]mid.Out
 }
 
 func NewPlayer() *Player {
-	return &Player{make(map[string]*Output)}
+	return &Player{make(map[string]mid.Out)}
 }
 
-func (p *Player) Play(track *Track, row int) {
-	p.PlayPattern(track, row)
-	p.PlayMute(track, row)
-}
-
-func (p *Player) PlayPattern(track *Track, step int) {
-	row := track.Seq.ConsolidatedRow(step)
-	for name, part := range row.Parts {
-		dev, ok := track.Settings.Devices[name]
-		if !ok {
-			continue
-		}
-		ch := dev.ProgChgOutCh - 1
-		if ch < 0 {
-			continue
-		}
-		p.Write(dev.Outputs, channel.Channel(ch).ProgramChange(uint8(part.Pattern)))
+func (p *Player) Play(trk *track.Track, tick int) {
+	parts, _ := track.Parts(trk)
+	for _, part := range parts {
+		pattern := track.Pattern(trk, part, tick)
+		p.write(part.ProgChgPortOut, channel.Channel(part.ProgChgOutCh).ProgramChange(uint8(pattern)))
+		// mute, _ := track.Mute(trk, part, tick)
 	}
 }
 
-func (p *Player) PlayMute(track *Track, step int) {
-	row := track.Seq.ConsolidatedRow(step)
-	for name, part := range row.Parts {
-		device, ok := track.Settings.Devices[name]
-		if !ok {
-			continue
-		}
-		//FIXME Drop source. Use device names.
-		if device.MuteSrc == DeviceSourceBoth {
-			for _, device := range track.Settings.Devices {
-				p.playMute(part.Mute, device)
-			}
-		} else {
-			p.playMute(part.Mute, device)
-		}
-	}
-}
+//PlayPattern
+//PlayMute
 
-func (p *Player) playMute(mute Mute, device *DeviceSettings) {
-	for n, ch := range device.Channels {
-		ch := ch - 1
-		if ch < 0 {
-			continue
-		}
-		if mute[n] {
-			p.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 1))
-		} else {
-			p.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 0))
-		}
-	}
-}
-
-func (p *Player) Write(names map[string]struct{}, message midi.Message) {
-	var err error
+func (p *Player) write(ports []string, message midi.Message) {
 	required := make(map[string]bool)
-	for name := range names {
+	for _, name := range ports {
 		required[name] = true
-		port, ok := p.output[name]
+		out, ok := p.ports[name]
 		if !ok {
-			port, err = OpenOutput(name)
+			var err error
+			out, err = mid.OpenOut(driver, -1, name)
 			if err != nil {
 				continue
 			}
-			p.output[name] = port
+			p.ports[name] = out
 		}
-		port.Write(message)
+		out.Send(message.Raw())
 	}
-	for name, port := range p.output {
+	for name, port := range p.ports {
 		if !required[name] {
-			port.Close()
-			delete(p.output, name)
+			if port.Close() == nil {
+				delete(p.ports, name)
+			}
 		}
 	}
 }
+
+// type Player struct {
+// 	output map[string]*Output
+// }
+
+// func NewPlayer() *Player {
+// 	return &Player{make(map[string]*Output)}
+// }
+
+// func (p *Player) Play(track *Track, row int) {
+// 	p.PlayPattern(track, row)
+// 	p.PlayMute(track, row)
+// }
+
+// func (p *Player) PlayPattern(track *Track, step int) {
+// 	row := track.Seq.ConsolidatedRow(step)
+// 	for name, part := range row.Parts {
+// 		dev, ok := track.Settings.Devices[name]
+// 		if !ok {
+// 			continue
+// 		}
+// 		ch := dev.ProgChgOutCh - 1
+// 		if ch < 0 {
+// 			continue
+// 		}
+// 		p.Write(dev.Outputs, channel.Channel(ch).ProgramChange(uint8(part.Pattern)))
+// 	}
+// }
+
+// func (p *Player) PlayMute(track *Track, step int) {
+// 	row := track.Seq.ConsolidatedRow(step)
+// 	for name, part := range row.Parts {
+// 		device, ok := track.Settings.Devices[name]
+// 		if !ok {
+// 			continue
+// 		}
+// 		//FIXME Drop source. Use device names.
+// 		if device.MuteSrc == DeviceSourceBoth {
+// 			for _, device := range track.Settings.Devices {
+// 				p.playMute(part.Mute, device)
+// 			}
+// 		} else {
+// 			p.playMute(part.Mute, device)
+// 		}
+// 	}
+// }
+
+// func (p *Player) playMute(mute Mute, device *DeviceSettings) {
+// 	for n, ch := range device.Channels {
+// 		ch := ch - 1
+// 		if ch < 0 {
+// 			continue
+// 		}
+// 		if mute[n] {
+// 			p.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 1))
+// 		} else {
+// 			p.Write(device.Outputs, channel.Channel(ch).ControlChange(94, 0))
+// 		}
+// 	}
+// }
+
+// func (p *Player) Write(names map[string]struct{}, message midi.Message) {
+// 	var err error
+// 	required := make(map[string]bool)
+// 	for name := range names {
+// 		required[name] = true
+// 		port, ok := p.output[name]
+// 		if !ok {
+// 			port, err = OpenOutput(name)
+// 			if err != nil {
+// 				continue
+// 			}
+// 			p.output[name] = port
+// 		}
+// 		port.Write(message)
+// 	}
+// 	for name, port := range p.output {
+// 		if !required[name] {
+// 			port.Close()
+// 			delete(p.output, name)
+// 		}
+// 	}
+// }
