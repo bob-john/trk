@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"trk/track"
 
-	"github.com/asdine/storm"
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
@@ -15,7 +15,7 @@ var (
 	model    = NewModel()
 	player   = NewPlayer()
 	recorder = NewRecorder()
-	trk      *storm.DB
+	trk      *track.Track
 	digitakt *Input
 	digitone *Input
 )
@@ -29,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	trk, err = OpenTrack(os.Args[1])
+	trk, err = track.Open(os.Args[1])
 	must(err)
 	defer trk.Close()
 
@@ -178,17 +178,16 @@ func color(on, ch bool) (fg termbox.Attribute) {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	var y int
-	var parts []*Part1
-	err := trk.All(&parts)
+	parts, err := track.Parts(trk)
 	must(err)
 	for _, part := range parts {
 		var (
-			pattern, patternChanged = part.Pattern(trk, model.Head)
-			mute, muteChanged       = part.Mute(trk, model.Head)
+			pattern, patternChanged = track.Pattern(trk, part, model.Head)
+			mute, muteChanged       = track.Mute(trk, part, model.Head)
 		)
 		DrawString(4, y, part.ShortName, color(false, patternChanged || muteChanged), termbox.ColorDefault)
-		DrawString(4+len(part.ShortName)+1, y, FormatPattern(pattern), color(false, patternChanged), termbox.ColorDefault)
-		DrawString(8+len(part.ShortName)+1, y, FormatMute(mute, part), color(false, muteChanged), termbox.ColorDefault)
+		DrawString(4+len(part.ShortName)+1, y, track.FormatPattern(pattern), color(false, patternChanged), termbox.ColorDefault)
+		DrawString(8+len(part.ShortName)+1, y, track.FormatMute(mute, part), color(false, muteChanged), termbox.ColorDefault)
 		y++
 	}
 	y++
@@ -199,11 +198,11 @@ func render() {
 			modified = head == 0
 		)
 		for _, part := range parts {
-			if _, changed := part.Pattern(trk, head); changed {
+			if _, changed := track.Pattern(trk, part, head); changed {
 				modified = true
 				break
 			}
-			if _, changed := part.Mute(trk, head); changed {
+			if _, changed := track.Mute(trk, part, head); changed {
 				modified = true
 				break
 			}
@@ -219,7 +218,7 @@ func options() *OptionPage {
 		inputs, _  = driver.Ins()
 		outputs, _ = driver.Outs()
 	)
-	addPartOptions := func(page *OptionPage, part *Part1) {
+	addPartOptions := func(page *OptionPage, part *track.Part) {
 		addInputs := func(page *OptionPage, ports *[]string) {
 			for _, port := range inputs {
 				name := port.String()
@@ -230,7 +229,7 @@ func options() *OptionPage {
 					} else {
 						*ports = Remove(*ports, name)
 					}
-					must(trk.Save(part))
+					must(track.SetPart(trk, part))
 				})
 			}
 		}
@@ -244,7 +243,7 @@ func options() *OptionPage {
 					} else {
 						*ports = Remove(*ports, name)
 					}
-					must(trk.Save(part))
+					must(track.SetPart(trk, part))
 				})
 			}
 		}
@@ -265,23 +264,22 @@ func options() *OptionPage {
 		page.AddMenu("CHANNELS", func(page *OptionPage) {
 			for n, ch := range part.TrackCh {
 				n := n
-				page.AddPicker(FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
+				page.AddPicker(track.FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
 					part.TrackCh[n] = ch
-					must(trk.Save(part))
+					must(track.SetPart(trk, part))
 				})
 			}
 			page.AddPicker("PROG CHG IN CH", channels, part.ProgChgInCh, func(selected int) {
 				part.ProgChgInCh = selected
-				must(trk.Save(part))
+				must(track.SetPart(trk, part))
 			})
 			page.AddPicker("PROG CHG OUT CH", channels, part.ProgChgOutCh, func(selected int) {
 				part.ProgChgOutCh = selected
-				must(trk.Save(part))
+				must(track.SetPart(trk, part))
 			})
 		})
 	}
-	var parts []*Part1
-	err := trk.All(&parts)
+	parts, err := track.Parts(trk)
 	must(err)
 	options := NewOptionPage("MIDI CONFIG")
 	for _, part := range parts {

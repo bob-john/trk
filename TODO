@@ -1,6 +1,6 @@
 IN PROGRESS
 ===========
-- ? Fix recording (mute & pattern) -> see Part0
+- ? Fix recording (mute & pattern) -> see Part1
 - ! Improve play (only send message for changes from the actual current state of the player)
 - Be careful with changes: recording events on a step should be kept event if the event is the same as the previous *at the time of the recording*.
 
@@ -26,3 +26,4 @@ NEXT
 - map[int]Row{[]Part} -> []Part{map[int]Step}
 - DeviceSettings{map[string]struct{}} -> DeviceSettings{[]string}
 - Drop DeviceSource, use device names.
+- Device model or template (ie. DT vs DN to format display and configure).
