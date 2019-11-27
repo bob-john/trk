@@ -152,10 +152,10 @@ func main() {
 		if model.State == Playing {
 			switch tick {
 			case 12:
-				// player.PlayPattern(model.Track, model.Head+2)
+				player.PlayPattern(trk, model.Head+2)
 
 			case 18:
-				// player.PlayMute(model.Track, model.Head+1)
+				player.PlayMute(trk, model.Head+1)
 
 			case 24:
 				model.Head++
