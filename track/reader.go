@@ -30,3 +30,15 @@ func Mute(trk *Track, part *Part, tick int) ([16]bool, bool) {
 	}
 	return [16]bool{}, false
 }
+
+func InputPorts(trk *Track) (ports []string) {
+	parts, err := Parts(trk)
+	if err != nil {
+		return
+	}
+	for _, part := range parts {
+		ports = append(ports, part.ProgChgPortIn...)
+		ports = append(ports, part.MutePortIn...)
+	}
+	return
+}

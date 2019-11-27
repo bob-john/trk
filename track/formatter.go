@@ -1,6 +1,8 @@
 package track
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func FormatTrackName(part string, n int) string {
 	switch part {
@@ -27,7 +29,7 @@ func FormatPattern(p int) string {
 
 func FormatMute(mute [16]bool, part *Part) (str string) {
 	for n, ch := range part.TrackCh {
-		if ch == 0 || mute[n] {
+		if ch < 0 || mute[n] {
 			str += "-"
 		} else if n < 8 {
 			str += string('1' + n)

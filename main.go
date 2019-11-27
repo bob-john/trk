@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"trk/track"
 
+	"github.com/gomidi/midi/midimessage/channel"
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
@@ -41,7 +42,7 @@ func main() {
 	defer termbox.Close()
 
 	player.Play(model.Track, 0)
-	recorder.Listen(model.Track.Settings.InputPortNames())
+	recorder.Listen(track.InputPorts(trk))
 
 	var (
 		eventC = make(chan termbox.Event)
@@ -122,10 +123,32 @@ func main() {
 				model.State = Viewing
 			}
 			if model.State == Recording {
-				model.Track.Seq.Insert(m.Port, model.Head, m.Message, model.Track.Settings)
+				parts, err := track.Parts(trk)
+				must(err)
+				switch mm := m.Message.(type) {
+				case channel.ProgramChange:
+					for _, part := range parts {
+						if Contains(part.ProgChgPortIn, m.Port) && int(mm.Channel()) == part.ProgChgInCh {
+							err = track.SetPattern(trk, part, model.Head, int(mm.Program()))
+							must(err)
+						}
+					}
+
+				case channel.ControlChange:
+					if mm.Controller() != 94 {
+						break
+					}
+					for _, part := range parts {
+						n := part.TrackOf(int(mm.Channel()))
+						if Contains(part.MutePortIn, m.Port) && n != -1 {
+							err = track.SetMuted(trk, part, model.Head, n, mm.Value() != 0)
+							must(err)
+						}
+					}
+				}
 			}
 		}
-		recorder.Listen(model.Track.Settings.InputPortNames())
+		recorder.Listen(track.InputPorts(trk))
 		if model.State == Playing {
 			switch tick {
 			case 12:
@@ -138,10 +161,8 @@ func main() {
 				model.Head++
 				tick = 0
 			}
-		} else {
-			if model.Head != oldHead {
-				player.Play(model.Track, model.Head)
-			}
+		} else if model.Head != oldHead {
+			player.Play(model.Track, model.Head)
 		}
 		render()
 	}
@@ -247,9 +268,9 @@ func options() *OptionPage {
 				})
 			}
 		}
-		var channels = []string{"OFF"}
-		for n := 0; n < 16; n++ {
-			channels = append(channels, strconv.Itoa(1+n))
+		channels := map[int]string{-1: "OFF"}
+		for ch := 0; ch < 16; ch++ {
+			channels[ch] = strconv.Itoa(ch + 1)
 		}
 		page.AddMenu("PORT CONFIG", func(page *OptionPage) {
 			page.AddLabel("PROG CHG PORT IN")

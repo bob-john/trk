@@ -113,7 +113,7 @@ func (p *OptionPage) AddCheckbox(title string, on bool, onchange func(bool)) {
 	p.items = append(p.items, &Checkbox{title, on, onchange})
 }
 
-func (p *OptionPage) AddPicker(label string, values []string, selected int, onchange func(int)) {
+func (p *OptionPage) AddPicker(label string, values map[int]string, selected int, onchange func(int)) {
 	p.items = append(p.items, &Picker{label, values, selected, onchange})
 }
 
@@ -235,7 +235,7 @@ func (c *Checkbox) MinWidth() int {
 
 type Picker struct {
 	label    string
-	values   []string
+	values   map[int]string
 	selected int
 	onchange func(int)
 }
@@ -245,14 +245,15 @@ func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
 		return
 	}
 	switch e.Key {
-	case termbox.KeyEnter:
-		p.selected = (p.selected + 1) % len(p.values)
 	case termbox.KeyArrowRight:
-		p.selected++
+		if _, ok := p.values[p.selected+1]; ok {
+			p.selected++
+		}
 	case termbox.KeyArrowLeft:
-		p.selected--
+		if _, ok := p.values[p.selected-1]; ok {
+			p.selected--
+		}
 	}
-	p.selected = clamp(p.selected, 0, len(p.values)-1)
 	p.onchange(p.selected)
 }
 
@@ -262,9 +263,9 @@ func (p *Picker) String(width int) string {
 
 func (p *Picker) MinWidth() int {
 	w := 0
-	for _, val := range p.values {
-		if len(val) > w {
-			w = len(val)
+	for _, str := range p.values {
+		if len(str) > w {
+			w = len(str)
 		}
 	}
 	return len(p.label) + 1 + w

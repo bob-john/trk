@@ -51,7 +51,16 @@ type Part struct {
 }
 
 func newPart(name, shortName string, trackCount int) *Part {
-	return &Part{name, shortName, make([]int, trackCount), nil, nil, nil, nil, 10, 10}
+	return &Part{name, shortName, make([]int, trackCount), nil, nil, nil, nil, 9, 9}
+}
+
+func (p *Part) TrackOf(ch int) int {
+	for n, c := range p.TrackCh {
+		if c == ch {
+			return n
+		}
+	}
+	return -1
 }
 
 type PatternChange struct {
