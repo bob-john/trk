@@ -18,6 +18,7 @@ var (
 	model     = NewModel()
 	player    = NewPlayer()
 	recorder  = NewRecorder()
+	console   = NewConsole()
 )
 
 func main() {
@@ -78,6 +79,9 @@ func main() {
 					//FIXME
 				case termbox.KeyEsc:
 					done = true
+
+				case termbox.KeyCtrlD:
+					console.Enabled = !console.Enabled
 
 				case termbox.KeyPgup:
 					model.SetPage(model.Page() - 1)
@@ -204,6 +208,7 @@ func render() {
 		)
 		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), fg, bg)
 	}
+	console.Render()
 	ui.Render()
 	termbox.Flush()
 }

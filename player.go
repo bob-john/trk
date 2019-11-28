@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"trk/track"
 
 	"github.com/gomidi/midi"
@@ -76,6 +77,7 @@ func (p *Player) write(ports []string, message midi.Message) {
 
 func (p *Player) flush() {
 	curr := p.next.Substract(p.last)
+	log.Printf("player flush %d events", len(curr.Events))
 	for _, e := range curr.Events {
 		port, ok := p.ports[e.Port]
 		if !ok {
