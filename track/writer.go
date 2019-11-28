@@ -53,6 +53,32 @@ func SetMuted(trk *Track, part *Part, tick int, track int, muted bool) error {
 	return SetMute(trk, part, tick, mute)
 }
 
+func Clear(trk *Track, tick int) (err error) {
+	parts, err := Parts(trk)
+	if err != nil {
+		return
+	}
+	for _, part := range parts {
+		var pc PatternChange
+		err = trk.db.Select(q.Eq("Part", part.Name), q.Eq("Tick", tick)).First(&pc)
+		if err == nil {
+			err = trk.db.DeleteStruct(&pc)
+		}
+		if err != nil && err != storm.ErrNotFound {
+			return
+		}
+		var mc MuteChange
+		err = trk.db.Select(q.Eq("Part", part.Name), q.Eq("Tick", tick)).First(&mc)
+		if err == nil {
+			err = trk.db.DeleteStruct(&mc)
+		}
+		if err != nil && err != storm.ErrNotFound {
+			return
+		}
+	}
+	return nil
+}
+
 func makeID() string {
 	b := make([]byte, 12)
 	_, err := rand.Read(b)

@@ -1,6 +1,5 @@
 IN PROGRESS
 ===========
-- Clear step
 - ! Improve play (only send message for changes from the actual current state of the player)
 
 NEXT
@@ -21,7 +20,9 @@ NEXT
 - Song part? Could be bank + 16 patterns with bank length. Ctrl+PgUp/PgDn to change bank. Have an "original" mode with 8 banks of 16 patterns and an extended mode of 25 banks of 99 patterns.
 - Ctrl+Z
 - Display help
+- Allow bigger/smaller page (even 12 or 20 by eg. - between 1 and 64 steps by eg.), group by 16 anyway.
 
 + Refactoring
 - Row -> Step
+- Review (m *Model) Pattern() int -> Rename to Page() remove useless methods if any?
 - Device model or template (ie. DT vs DN to format display and configure).

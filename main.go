@@ -98,7 +98,7 @@ func main() {
 					model.SetPattern(model.Pattern() + 1)
 
 				case termbox.KeyDelete:
-					model.ClearStep()
+					track.Clear(model.Track, model.Head)
 				case termbox.KeyEnter:
 					model.ToggleRecording()
 				}

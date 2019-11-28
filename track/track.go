@@ -22,14 +22,6 @@ func Open(name string) (*Track, error) {
 		if err != nil {
 			return nil, err
 		}
-		err = SetPattern(trk, part, 0, 0)
-		if err != nil {
-			return nil, err
-		}
-		err = SetMute(trk, part, 0, [16]bool{})
-		if err != nil {
-			return nil, err
-		}
 	}
 	return trk, nil
 }

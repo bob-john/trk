@@ -46,12 +46,6 @@ func (m *Model) LastPattern() int {
 	return 512 - 1
 }
 
-func (m *Model) ClearStep() {
-	// if m.State.Is(Viewing, Playing) {
-	// 	m.Track.Seq.Clear(m.Head)
-	// }
-}
-
 func (m *Model) ToggleRecording() {
 	switch m.State {
 	case Viewing:
