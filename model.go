@@ -12,12 +12,12 @@ func NewModel() *Model {
 	return new(Model)
 }
 
-func (m *Model) Pattern() int {
+func (m *Model) Page() int {
 	return m.Head / 16
 }
 
-func (m *Model) SetPattern(val int) {
-	m.setHead(clamp(val, 0, m.LastPattern()), m.X(), m.Y())
+func (m *Model) SetPage(val int) {
+	m.setHead(clamp(val, 0, m.LastPage()), m.X(), m.Y())
 }
 
 func (m *Model) X() int {
@@ -25,7 +25,7 @@ func (m *Model) X() int {
 }
 
 func (m *Model) SetX(val int) {
-	m.setHead(m.Pattern(), val, m.Y())
+	m.setHead(m.Page(), val, m.Y())
 }
 
 func (m *Model) Y() int {
@@ -33,16 +33,16 @@ func (m *Model) Y() int {
 }
 
 func (m *Model) SetY(val int) {
-	if m.Pattern() == 0 && m.Y() == 0 && val < 0 {
+	if m.Page() == 0 && m.Y() == 0 && val < 0 {
 		return
 	}
-	if m.Pattern() == m.LastPattern() && m.Y() == 1 && val > 1 {
+	if m.Page() == m.LastPage() && m.Y() == 1 && val > 1 {
 		return
 	}
-	m.setHead(m.Pattern(), m.X(), val)
+	m.setHead(m.Page(), m.X(), val)
 }
 
-func (m *Model) LastPattern() int {
+func (m *Model) LastPage() int {
 	return 512 - 1
 }
 
@@ -56,11 +56,11 @@ func (m *Model) ToggleRecording() {
 }
 
 func (m *Model) HeadForTrig(val int) int {
-	return m.makeHead(m.Pattern(), val%8, val/8)
+	return m.makeHead(m.Page(), val%8, val/8)
 }
 
 func (m *Model) SetTrig(val int) {
-	m.setHead(m.Pattern(), val%8, val/8)
+	m.setHead(m.Page(), val%8, val/8)
 }
 
 func (m *Model) setHead(pattern, x, y int) {

@@ -8,6 +8,7 @@ NEXT
 - Should not be able to clear first step. Or should be able to undo (delete again or Ctrl+Z).
 - Recording events on a step should be kept event if the event is the same as the previous *at the time of the recording*.
     -> This is now a display issue (the data is properly saved to the track)
+- Multiple track with the same channel? See TrackOf().
 
 + Improvements
 - Cache the steps (invalidate on update, be careful with consolidated step)
@@ -23,6 +24,6 @@ NEXT
 - Allow bigger/smaller page (even 12 or 20 by eg. - between 1 and 64 steps by eg.), group by 16 anyway.
 
 + Refactoring
-- Row -> Step
+- Row -> Step // no more row but tick and step would be cool
 - Review (m *Model) Pattern() int -> Rename to Page() remove useless methods if any?
 - Device model or template (ie. DT vs DN to format display and configure).

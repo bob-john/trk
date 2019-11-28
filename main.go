@@ -80,11 +80,11 @@ func main() {
 					done = true
 
 				case termbox.KeyPgup:
-					model.SetPattern(model.Pattern() - 1)
+					model.SetPage(model.Page() - 1)
 				case termbox.KeyHome:
-					model.SetPattern(0)
+					model.SetPage(0)
 				case termbox.KeyEnd:
-					model.SetPattern(model.LastPattern())
+					model.SetPage(model.LastPage())
 
 				case termbox.KeyArrowRight:
 					model.SetX(model.X() + 1)
@@ -95,7 +95,7 @@ func main() {
 				case termbox.KeyArrowUp:
 					model.SetY(model.Y() - 1)
 				case termbox.KeyPgdn:
-					model.SetPattern(model.Pattern() + 1)
+					model.SetPage(model.Page() + 1)
 
 				case termbox.KeyDelete:
 					track.Clear(model.Track, model.Head)
@@ -196,7 +196,7 @@ func render() {
 		y++
 	}
 	y++
-	DrawString(0, y, fmt.Sprintf("%03d", 1+model.Pattern()), termbox.ColorDefault, termbox.ColorDefault)
+	DrawString(0, y, fmt.Sprintf("%03d", 1+model.Page()), termbox.ColorDefault, termbox.ColorDefault)
 	for n := 0; n < 16; n++ {
 		var (
 			tick   = model.HeadForTrig(n)
