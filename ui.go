@@ -80,7 +80,6 @@ func (d *Dialog) Handle(ui *UI, e termbox.Event) {
 	default:
 		d.Page().Handle(d, e)
 	}
-	return
 }
 
 func (d *Dialog) Render() {

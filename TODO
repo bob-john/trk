@@ -1,5 +1,6 @@
 IN PROGRESS
 ===========
+- Clear step
 - ! Improve play (only send message for changes from the actual current state of the player)
 
 NEXT
@@ -22,9 +23,5 @@ NEXT
 - Display help
 
 + Refactoring
-- BoltDB?
 - Row -> Step
-- map[int]Row{[]Part} -> []Part{map[int]Step}
-- DeviceSettings{map[string]struct{}} -> DeviceSettings{[]string}
-- Drop DeviceSource, use device names.
 - Device model or template (ie. DT vs DN to format display and configure).

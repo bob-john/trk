@@ -1,26 +1,15 @@
 package main
 
+import "trk/track"
+
 type Model struct {
-	Seq0  *Seq0
-	Track *Track
+	Track *track.Track
 	Head  int
 	State State
 }
 
 func NewModel() *Model {
-	return &Model{Seq0: NewSeq0()}
-}
-
-func (m *Model) LoadTrack(path string) error {
-	m.Track = NewTrack()
-	// var err error
-	// m.Track, err = ReadTrack(path)
-	// if os.IsNotExist(err) {
-	// 	m.Track = NewTrack()
-	// } else if err != nil {
-	// 	return err
-	// }
-	return nil
+	return new(Model)
 }
 
 func (m *Model) Pattern() int {
@@ -58,9 +47,9 @@ func (m *Model) LastPattern() int {
 }
 
 func (m *Model) ClearStep() {
-	if m.State.Is(Viewing, Playing) {
-		m.Track.Seq.Clear(m.Head)
-	}
+	// if m.State.Is(Viewing, Playing) {
+	// 	m.Track.Seq.Clear(m.Head)
+	// }
 }
 
 func (m *Model) ToggleRecording() {

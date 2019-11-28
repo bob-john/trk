@@ -2,7 +2,6 @@ package track
 
 import (
 	"github.com/asdine/storm/q"
-	"github.com/nsf/termbox-go"
 )
 
 func Parts(trk *Track) (parts []*Part, err error) {
@@ -75,17 +74,4 @@ func OutputPorts(trk *Track) (ports []string) {
 		ports = append(ports, part.MutePortOut...)
 	}
 	return
-}
-
-func DrawString(x, y int, s string, fg, bg termbox.Attribute) {
-	for _, c := range s {
-		switch c {
-		case '\n':
-			x = 0
-			y++
-		default:
-			termbox.SetCell(x, y, c, fg, bg)
-			x++
-		}
-	}
 }
