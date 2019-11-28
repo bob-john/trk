@@ -24,8 +24,8 @@ func main() {
 	var err error
 
 	if len(os.Args) != 2 {
-		fmt.Println("usage: model.Track <path>")
-		fmt.Println("model.Track: invalid command")
+		fmt.Println("usage: trk <path>")
+		fmt.Println("trk: invalid command")
 		os.Exit(1)
 	}
 
