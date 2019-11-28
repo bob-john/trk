@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"log"
 	"trk/track"
 
 	"github.com/gomidi/midi"
@@ -77,7 +76,6 @@ func (p *Player) write(ports []string, message midi.Message) {
 
 func (p *Player) flush() {
 	curr := p.next.Substract(p.last)
-	log.Printf("player flush %d events", len(curr.Events))
 	for _, e := range curr.Events {
 		port, ok := p.ports[e.Port]
 		if !ok {
@@ -88,7 +86,7 @@ func (p *Player) flush() {
 			}
 			p.ports[e.Port] = port
 		}
-		port.Send(e.Message)
+		port.Send(e.Message.Raw())
 	}
 
 	required := make(map[string]bool)
@@ -103,16 +101,38 @@ func (p *Player) flush() {
 		}
 	}
 
-	p.last, p.next = p.next, new(playEventSet)
+	p.last.Merge(p.next)
+	p.next.Clear()
 }
 
 type playEvent struct {
 	Port    string
-	Message []byte
+	Message midi.Message
 }
 
 func (e playEvent) Equals(o playEvent) bool {
-	return e.Port == o.Port && bytes.Equal(e.Message, o.Message)
+	return e.Port == o.Port && bytes.Equal(e.Message.Raw(), o.Message.Raw())
+}
+
+func (e playEvent) Replace(o playEvent) bool {
+	if e.Port != o.Port {
+		return false
+	}
+	switch e := e.Message.(type) {
+	case channel.ProgramChange:
+		o, ok := o.Message.(channel.ProgramChange)
+		if !ok {
+			return false
+		}
+		return e.Channel() == o.Channel()
+	case channel.ControlChange:
+		o, ok := o.Message.(channel.ControlChange)
+		if !ok {
+			return false
+		}
+		return e.Channel() == o.Channel() && e.Controller() == o.Controller()
+	}
+	return e.Equals(o)
 }
 
 type playEventSet struct {
@@ -121,7 +141,7 @@ type playEventSet struct {
 
 func (s *playEventSet) Insert(ports []string, message midi.Message) {
 	for _, port := range ports {
-		e := playEvent{port, message.Raw()}
+		e := playEvent{port, message}
 		if s.contains(e) {
 			return
 		}
@@ -138,6 +158,26 @@ func (s *playEventSet) Substract(o *playEventSet) *playEventSet {
 		r.Events = append(r.Events, e)
 	}
 	return r
+}
+
+func (s *playEventSet) Merge(o *playEventSet) {
+	for _, o := range o.Events {
+		var replaced bool
+		for i, e := range s.Events {
+			if o.Replace(e) {
+				s.Events[i] = o
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			s.Events = append(s.Events, o)
+		}
+	}
+}
+
+func (s *playEventSet) Clear() {
+	s.Events = nil
 }
 
 func (s *playEventSet) contains(e playEvent) bool {
