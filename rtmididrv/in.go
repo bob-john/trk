@@ -13,7 +13,8 @@ func (i *inPort) Open() (err error) {
 	if i.opened {
 		return nil
 	}
-	i.input, err = rtmidi.NewMIDIInDefault()
+	// i.input, err = rtmidi.NewMIDIInDefault()
+	i.input, err = rtmidi.NewMIDIIn(rtmidi.APIUnspecified, "", 32*1024)
 	if err != nil {
 		return
 	}
@@ -22,7 +23,8 @@ func (i *inPort) Open() (err error) {
 			i.input.Destroy()
 		}
 	}()
-	err = i.input.OpenPort(i.port, i.name)
+	// err = i.input.OpenPort(i.port, i.name)
+	err = i.input.OpenPort(i.port, "")
 	if err != nil {
 		return err
 	}
