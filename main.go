@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"trk/rtmididrv"
 	"trk/track"
 
 	"github.com/nsf/termbox-go"
@@ -13,7 +14,7 @@ import (
 )
 
 var (
-	midiDriver, _ = NewDriver()
+	midiDriver, _ = rtmididrv.New()
 	ui            = NewUI()
 	model         = NewModel()
 	player        = NewPlayer()
