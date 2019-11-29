@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"trk/track"
 
-	"github.com/gomidi/midi"
-	"github.com/gomidi/midi/midimessage/channel"
+	"gitlab.com/gomidi/midi"
+	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/mid"
 )
 

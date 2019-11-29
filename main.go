@@ -7,8 +7,8 @@ import (
 
 	"trk/track"
 
-	"github.com/gomidi/midi/midimessage/channel"
-	"github.com/gomidi/midi/midimessage/realtime"
+	"gitlab.com/gomidi/midi/midimessage/channel"
+	"gitlab.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
 
