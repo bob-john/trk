@@ -25,7 +25,7 @@ func NewRecorder() *Recorder {
 			required := make(map[string]bool)
 			for _, name := range names {
 				if _, ok := opened[name]; !ok {
-					port, err := mid.OpenIn(driver, -1, name)
+					port, err := mid.OpenIn(midiDriver, -1, name)
 					if err != nil {
 						continue
 					}

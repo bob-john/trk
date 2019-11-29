@@ -13,7 +13,7 @@ import (
 )
 
 func NewDriver() (mid.Driver, error) {
-	return &midiDriver{}, nil
+	return &winMidiDriver{}, nil
 }
 
 var (
@@ -21,9 +21,9 @@ var (
 )
 
 // https://docs.microsoft.com/fr-fr/windows/win32/multimedia/midi-functions
-type midiDriver struct{}
+type winMidiDriver struct{}
 
-func (d midiDriver) Ins() ([]mid.In, error) {
+func (d winMidiDriver) Ins() ([]mid.In, error) {
 	var ins []mid.In
 	n := int(C.midiInGetNumDevs())
 	for i := 0; i < n; i++ {
@@ -37,7 +37,7 @@ func (d midiDriver) Ins() ([]mid.In, error) {
 	return ins, nil
 }
 
-func (d midiDriver) Outs() ([]mid.Out, error) {
+func (d winMidiDriver) Outs() ([]mid.Out, error) {
 	var outs []mid.Out
 	n := int(C.midiOutGetNumDevs())
 	for i := 0; i < n; i++ {
@@ -51,11 +51,11 @@ func (d midiDriver) Outs() ([]mid.Out, error) {
 	return outs, nil
 }
 
-func (d midiDriver) String() string {
+func (d winMidiDriver) String() string {
 	return "WinMM MIDI driver"
 }
 
-func (d midiDriver) Close() error {
+func (d winMidiDriver) Close() error {
 	return nil
 }
 

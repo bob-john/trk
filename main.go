@@ -7,18 +7,18 @@ import (
 
 	"trk/track"
 
+	"github.com/nsf/termbox-go"
 	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/midimessage/realtime"
-	"github.com/nsf/termbox-go"
 )
 
 var (
-	driver, _ = NewDriver()
-	ui        = NewUI()
-	model     = NewModel()
-	player    = NewPlayer()
-	recorder  = NewRecorder()
-	console   = NewConsole()
+	midiDriver, _ = NewDriver()
+	ui            = NewUI()
+	model         = NewModel()
+	player        = NewPlayer()
+	recorder      = NewRecorder()
+	console       = NewConsole()
 )
 
 func main() {
@@ -231,8 +231,8 @@ func colors(highlighted, recording, modified bool) (termbox.Attribute, termbox.A
 
 func options() *OptionPage {
 	var (
-		inputs, _  = driver.Ins()
-		outputs, _ = driver.Outs()
+		inputs, _  = midiDriver.Ins()
+		outputs, _ = midiDriver.Outs()
 	)
 	addPartOptions := func(page *OptionPage, part *track.Part) {
 		addInputs := func(page *OptionPage, ports *[]string) {

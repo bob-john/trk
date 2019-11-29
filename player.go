@@ -80,7 +80,7 @@ func (p *Player) flush() {
 		port, ok := p.ports[e.Port]
 		if !ok {
 			var err error
-			port, err = mid.OpenOut(driver, -1, e.Port)
+			port, err = mid.OpenOut(midiDriver, -1, e.Port)
 			if err != nil {
 				continue
 			}
