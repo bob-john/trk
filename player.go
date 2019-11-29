@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"log"
+	"time"
 	"trk/track"
 
 	"gitlab.com/gomidi/midi"
-	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/mid"
+	"gitlab.com/gomidi/midi/midimessage/channel"
 )
 
 type Player struct {
@@ -29,6 +31,11 @@ func (p *Player) Play(trk *track.Track, tick int) {
 }
 
 func (p *Player) PlayPattern(trk *track.Track, tick int) {
+	start := time.Now()
+	defer func() {
+		log.Println("pattern->", time.Since(start))
+	}()
+
 	parts, _ := track.Parts(trk)
 	for _, part := range parts {
 		p.writePattern(trk, part, tick)
@@ -37,6 +44,11 @@ func (p *Player) PlayPattern(trk *track.Track, tick int) {
 }
 
 func (p *Player) PlayMute(trk *track.Track, tick int) {
+	start := time.Now()
+	defer func() {
+		log.Println("mute->", time.Since(start))
+	}()
+
 	parts, _ := track.Parts(trk)
 	for _, part := range parts {
 		p.writeMute(trk, part, tick)

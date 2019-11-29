@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"trk/rtmididrv"
 	"trk/track"
@@ -182,6 +184,10 @@ func clamp(val, min, max int) int {
 }
 
 func render() {
+	start := time.Now()
+	defer func() {
+		log.Println("render", time.Since(start))
+	}()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	var y int
 	var fg, bg termbox.Attribute
