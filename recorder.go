@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/mid"
@@ -25,46 +26,70 @@ func NewRecorder() *Recorder {
 			required := make(map[string]bool)
 			for _, name := range names {
 				if _, ok := opened[name]; !ok {
-					port, err := mid.OpenIn(midiDriver, -1, name)
+					in, err := mid.OpenIn(midiDriver, -1, name)
 					if err != nil {
 						continue
 					}
-					var (
-						r, w = io.Pipe()
-						msg  = make(chan midi.Message)
-						quit = make(chan struct{})
-					)
-					err = port.SetListener(func(b []byte, deltaMicroseconds int64) {
-						w.Write(b)
+					log.Println("open", name, err, in.IsOpen())
+					r, w := io.Pipe()
+					in.SetListener(func(data []byte, deltaMicroseconds int64) {
+						log.Println(w.Write(data))
 					})
-					if err != nil {
-						continue
-					}
 					go func() {
-						mr := midireader.New(r, func(m realtime.Message) {
-							msg <- m
+						rd := midireader.New(r, func(message realtime.Message) {
+							c <- Message{name, message}
 						})
 						for {
-							m, err := mr.Read()
+							message, err := rd.Read()
 							if err != nil {
+								log.Println(err)
 								return
 							}
-							msg <- m
+							c <- Message{name, message}
 						}
 					}()
-					go func() {
-						for {
-							select {
-							case m := <-msg:
-								c <- Message{port.String(), m}
-							case <-quit:
-								port.Close()
-								return
-							}
-						}
+					opened[name] = make(chan struct{})
 
-					}()
-					opened[name] = quit
+					// port, err := mid.OpenIn(midiDriver, -1, name)
+					// if err != nil {
+					// 	continue
+					// }
+					// var (
+					// 	r, w = io.Pipe()
+					// 	msg  = make(chan midi.Message)
+					// 	quit = make(chan struct{})
+					// )
+					// err = port.SetListener(func(b []byte, deltaMicroseconds int64) {
+					// 	w.Write(b)
+					// })
+					// if err != nil {
+					// 	continue
+					// }
+					// go func() {
+					// 	mr := midireader.New(r, func(m realtime.Message) {
+					// 		msg <- m
+					// 	})
+					// 	for {
+					// 		m, err := mr.Read()
+					// 		if err != nil {
+					// 			return
+					// 		}
+					// 		msg <- m
+					// 	}
+					// }()
+					// go func() {
+					// 	for {
+					// 		select {
+					// 		case m := <-msg:
+					// 			c <- Message{port.String(), m}
+					// 		case <-quit:
+					// 			port.Close()
+					// 			return
+					// 		}
+					// 	}
+
+					// }()
+					// opened[name] = quit
 				}
 				required[name] = true
 			}
