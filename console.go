@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"log"
+	"sort"
+	"time"
 
 	"github.com/nsf/termbox-go"
 )
@@ -44,4 +46,41 @@ func (c *Console) Render() {
 	for n, line := range c.lines {
 		DrawString(1, 8+n, line, termbox.ColorDefault, termbox.ColorDefault)
 	}
+}
+
+type TimeTracker struct {
+	start    time.Time
+	measures map[string][]time.Duration
+}
+
+func NewTimeTracker() *TimeTracker {
+	return &TimeTracker{time.Now(), make(map[string][]time.Duration)}
+}
+
+func (tt *TimeTracker) Trace(label string) {
+	tt.measures[label] = append(tt.measures[label], time.Since(tt.start))
+	tt.start = time.Now()
+}
+
+func (tt *TimeTracker) Log() {
+	var labels []string
+	var global time.Duration
+	var total = make(map[string]time.Duration)
+	var count = make(map[string]time.Duration)
+	for label, measures := range tt.measures {
+		for _, measure := range measures {
+			global += measure
+			total[label] += measure
+			count[label]++
+		}
+		labels = append(labels, label)
+	}
+	sort.Strings(labels)
+	for _, label := range labels {
+		if count[label] == 0 {
+			continue
+		}
+		log.Printf("[%s] %s x %d", label, total[label]/count[label], count[label])
+	}
+	log.Println("===", global)
 }

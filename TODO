@@ -1,5 +1,6 @@
 In progress
 ===========
+- Fix MIDI error, run render() in its own goroutine.
 
 Refactoring
 ===========
