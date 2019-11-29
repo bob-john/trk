@@ -4,9 +4,9 @@ import (
 	"io"
 
 	"gitlab.com/gomidi/midi"
+	"gitlab.com/gomidi/midi/mid"
 	"gitlab.com/gomidi/midi/midimessage/realtime"
 	"gitlab.com/gomidi/midi/midireader"
-	"gitlab.com/gomidi/midi/mid"
 )
 
 type Recorder struct {

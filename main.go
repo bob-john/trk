@@ -61,6 +61,8 @@ func main() {
 		tick int
 	)
 	for !done {
+		render()
+
 		var (
 			oldHead = model.Head
 		)
@@ -164,7 +166,6 @@ func main() {
 		} else if model.Head != oldHead {
 			player.Play(model.Track, model.Head)
 		}
-		render()
 	}
 	termbox.Interrupt()
 }
