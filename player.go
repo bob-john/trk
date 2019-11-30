@@ -5,8 +5,8 @@ import (
 	"trk/track"
 
 	"gitlab.com/gomidi/midi"
-	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/mid"
+	"gitlab.com/gomidi/midi/midimessage/channel"
 )
 
 type Player struct {
@@ -20,8 +20,7 @@ func NewPlayer() *Player {
 }
 
 func (p *Player) Play(trk *track.Track, tick int) {
-	parts, _ := track.Parts(trk)
-	for _, part := range parts {
+	for _, part := range trk.Parts() {
 		p.writePattern(trk, part, tick)
 		p.writeMute(trk, part, tick)
 	}
@@ -29,23 +28,21 @@ func (p *Player) Play(trk *track.Track, tick int) {
 }
 
 func (p *Player) PlayPattern(trk *track.Track, tick int) {
-	parts, _ := track.Parts(trk)
-	for _, part := range parts {
+	for _, part := range trk.Parts() {
 		p.writePattern(trk, part, tick)
 	}
 	p.flush()
 }
 
 func (p *Player) PlayMute(trk *track.Track, tick int) {
-	parts, _ := track.Parts(trk)
-	for _, part := range parts {
+	for _, part := range trk.Parts() {
 		p.writeMute(trk, part, tick)
 	}
 	p.flush()
 }
 
 func (p *Player) writePattern(trk *track.Track, part *track.Part, tick int) {
-	pattern := track.Pattern(trk, part, tick)
+	pattern := trk.Pattern(part, tick)
 	p.write(part.ProgChgPortOut, p.pattern(part, pattern))
 }
 
@@ -54,7 +51,7 @@ func (p *Player) pattern(part *track.Part, pattern int) midi.Message {
 }
 
 func (p *Player) writeMute(trk *track.Track, part *track.Part, tick int) {
-	mute := track.Mute(trk, part, tick)
+	mute := trk.Mute(part, tick)
 	for n, ch := range part.TrackCh {
 		if ch == -1 {
 			continue

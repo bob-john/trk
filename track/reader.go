@@ -1,10 +1,10 @@
 package track
 
-func Parts(trk *Track) (parts []*Part, err error) {
-	return trk.parts, nil
+func (trk *Track) Parts() []*Part {
+	return trk.parts
 }
 
-func Pattern(trk *Track, part *Part, tick int) (pattern int) {
+func (trk *Track) Pattern(part *Part, tick int) (pattern int) {
 	for _, pc := range trk.pc {
 		if pc.Tick <= tick {
 			if pc.Part == part.Name {
@@ -17,7 +17,7 @@ func Pattern(trk *Track, part *Part, tick int) (pattern int) {
 	return
 }
 
-func IsPatternModified(trk *Track, part *Part, tick int) bool {
+func (trk *Track) IsPatternModified(part *Part, tick int) bool {
 	for _, pc := range trk.pc {
 		if pc.Tick == tick && pc.Part == part.Name {
 			return true
@@ -26,7 +26,7 @@ func IsPatternModified(trk *Track, part *Part, tick int) bool {
 	return false
 }
 
-func Mute(trk *Track, part *Part, tick int) (mute [16]bool) {
+func (trk *Track) Mute(part *Part, tick int) (mute [16]bool) {
 	for _, mc := range trk.mc {
 		if mc.Tick <= tick {
 			if mc.Part == part.Name {
@@ -39,7 +39,7 @@ func Mute(trk *Track, part *Part, tick int) (mute [16]bool) {
 	return
 }
 
-func IsMuteModified(trk *Track, part *Part, tick int) bool {
+func (trk *Track) IsMuteModified(part *Part, tick int) bool {
 	for _, mc := range trk.mc {
 		if mc.Tick == tick && mc.Part == part.Name {
 			return true
@@ -48,41 +48,32 @@ func IsMuteModified(trk *Track, part *Part, tick int) bool {
 	return false
 }
 
-func IsPartModified(trk *Track, part *Part, tick int) bool {
-	return IsPatternModified(trk, part, tick) || IsMuteModified(trk, part, tick)
+func (trk *Track) IsPartModified(part *Part, tick int) bool {
+	return trk.IsPatternModified(part, tick) || trk.IsMuteModified(part, tick)
 }
 
-func IsModified(trk *Track, tick int) bool {
-	parts, _ := Parts(trk)
-	for _, part := range parts {
-		if IsPatternModified(trk, part, tick) {
+func (trk *Track) IsModified(tick int) bool {
+	for _, part := range trk.parts {
+		if trk.IsPatternModified(part, tick) {
 			return true
 		}
-		if IsMuteModified(trk, part, tick) {
+		if trk.IsMuteModified(part, tick) {
 			return true
 		}
 	}
 	return false
 }
 
-func InputPorts(trk *Track) (ports []string) {
-	parts, err := Parts(trk)
-	if err != nil {
-		return
-	}
-	for _, part := range parts {
+func (trk *Track) InputPorts() (ports []string) {
+	for _, part := range trk.parts {
 		ports = append(ports, part.ProgChgPortIn...)
 		ports = append(ports, part.MutePortIn...)
 	}
 	return
 }
 
-func OutputPorts(trk *Track) (ports []string) {
-	parts, err := Parts(trk)
-	if err != nil {
-		return
-	}
-	for _, part := range parts {
+func (trk *Track) OutputPorts() (ports []string) {
+	for _, part := range trk.parts {
 		ports = append(ports, part.ProgChgPortOut...)
 		ports = append(ports, part.MutePortOut...)
 	}

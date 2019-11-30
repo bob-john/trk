@@ -40,7 +40,7 @@ func main() {
 	defer model.Track.Close()
 
 	player.Play(model.Track, 0)
-	recorder.Listen(track.InputPorts(model.Track))
+	recorder.Listen(model.Track.InputPorts())
 
 	var (
 		eventC = make(chan termbox.Event)
@@ -105,7 +105,7 @@ func main() {
 					model.SetPage(model.Page() + 1)
 
 				case termbox.KeyDelete:
-					track.Clear(model.Track, model.Head)
+					model.Track.Clear(model.Head)
 				case termbox.KeyEnter:
 					model.ToggleRecording()
 				}
@@ -126,13 +126,11 @@ func main() {
 				model.State = Viewing
 			}
 			if model.State == Recording {
-				parts, err := track.Parts(model.Track)
-				must(err)
 				switch mm := m.Message.(type) {
 				case channel.ProgramChange:
-					for _, part := range parts {
+					for _, part := range model.Track.Parts() {
 						if Contains(part.ProgChgPortIn, m.Port) && int(mm.Channel()) == part.ProgChgInCh {
-							err = track.SetPattern(model.Track, part, model.Head, int(mm.Program()))
+							err = model.Track.SetPattern(part, model.Head, int(mm.Program()))
 							must(err)
 						}
 					}
@@ -141,17 +139,17 @@ func main() {
 					if mm.Controller() != 94 {
 						break
 					}
-					for _, part := range parts {
+					for _, part := range model.Track.Parts() {
 						n := part.TrackOf(int(mm.Channel()))
 						if Contains(part.MutePortIn, m.Port) && n != -1 {
-							err = track.SetMuted(model.Track, part, model.Head, n, mm.Value() != 0)
+							err = model.Track.SetMuted(part, model.Head, n, mm.Value() != 0)
 							must(err)
 						}
 					}
 				}
 			}
 		}
-		recorder.Listen(track.InputPorts(model.Track))
+		recorder.Listen(model.Track.InputPorts())
 		if model.State == Playing {
 			switch tick {
 			case 12:
@@ -186,18 +184,16 @@ func render() {
 	var y int
 	var fg, bg termbox.Attribute
 	var recording = model.State == Recording
-	parts, err := track.Parts(model.Track)
-	must(err)
-	for _, part := range parts {
+	for _, part := range model.Track.Parts() {
 		var (
-			pattern = track.Pattern(model.Track, part, model.Head)
-			mute    = track.Mute(model.Track, part, model.Head)
+			pattern = model.Track.Pattern(part, model.Head)
+			mute    = model.Track.Mute(part, model.Head)
 		)
-		fg, bg = colors(false, recording, track.IsPartModified(model.Track, part, model.Head))
+		fg, bg = colors(false, recording, model.Track.IsPartModified(part, model.Head))
 		DrawString(4, y, part.ShortName, fg, bg)
-		fg, bg = colors(false, recording, track.IsPatternModified(model.Track, part, model.Head))
+		fg, bg = colors(false, recording, model.Track.IsPatternModified(part, model.Head))
 		DrawString(4+len(part.ShortName)+1, y, track.FormatPattern(pattern), fg, bg)
-		fg, bg = colors(false, recording, track.IsMuteModified(model.Track, part, model.Head))
+		fg, bg = colors(false, recording, model.Track.IsMuteModified(part, model.Head))
 		DrawString(8+len(part.ShortName)+1, y, track.FormatMute(mute, part), fg, bg)
 		y++
 	}
@@ -206,7 +202,7 @@ func render() {
 	for n := 0; n < 16; n++ {
 		var (
 			tick   = model.HeadForTrig(n)
-			fg, bg = colors(n == model.Head%16, recording, track.IsModified(model.Track, tick))
+			fg, bg = colors(n == model.Head%16, recording, model.Track.IsModified(tick))
 		)
 		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), fg, bg)
 	}
@@ -247,7 +243,7 @@ func options() *OptionPage {
 					} else {
 						*ports = Remove(*ports, name)
 					}
-					must(track.SetPart(model.Track, part))
+					must(model.Track.SetPart(part))
 				})
 			}
 		}
@@ -261,7 +257,7 @@ func options() *OptionPage {
 					} else {
 						*ports = Remove(*ports, name)
 					}
-					must(track.SetPart(model.Track, part))
+					must(model.Track.SetPart(part))
 				})
 			}
 		}
@@ -284,23 +280,21 @@ func options() *OptionPage {
 				n := n
 				page.AddPicker(track.FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
 					part.TrackCh[n] = ch
-					must(track.SetPart(model.Track, part))
+					must(model.Track.SetPart(part))
 				})
 			}
 			page.AddPicker("PROG CHG IN CH", channels, part.ProgChgInCh, func(selected int) {
 				part.ProgChgInCh = selected
-				must(track.SetPart(model.Track, part))
+				must(model.Track.SetPart(part))
 			})
 			page.AddPicker("PROG CHG OUT CH", channels, part.ProgChgOutCh, func(selected int) {
 				part.ProgChgOutCh = selected
-				must(track.SetPart(model.Track, part))
+				must(model.Track.SetPart(part))
 			})
 		})
 	}
-	parts, err := track.Parts(model.Track)
-	must(err)
 	options := NewOptionPage("MIDI CONFIG")
-	for _, part := range parts {
+	for _, part := range model.Track.Parts() {
 		options.AddMenu(part.Name, func(page *OptionPage) {
 			addPartOptions(page, part)
 		})

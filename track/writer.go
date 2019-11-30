@@ -6,7 +6,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 )
 
-func CreateIfNotExists(trk *Track, part *Part) error {
+func (trk *Track) CreateIfNotExists(part *Part) error {
 	for _, p := range trk.parts {
 		if p.Name == part.Name {
 			return nil
@@ -21,7 +21,7 @@ func CreateIfNotExists(trk *Track, part *Part) error {
 	return nil
 }
 
-func SetPart(trk *Track, part *Part) error {
+func (trk *Track) SetPart(part *Part) error {
 	err := trk.db.Save(part)
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func SetPart(trk *Track, part *Part) error {
 	return nil
 }
 
-func SetPattern(trk *Track, part *Part, tick, pattern int) error {
+func (trk *Track) SetPattern(part *Part, tick, pattern int) error {
 	var ch *PatternChange
 	for _, pc := range trk.pc {
 		if pc.Part == part.Name && pc.Tick == tick {
@@ -64,7 +64,7 @@ func SetPattern(trk *Track, part *Part, tick, pattern int) error {
 	return nil
 }
 
-func SetMute(trk *Track, part *Part, tick int, mute [16]bool) error {
+func (trk *Track) SetMute(part *Part, tick int, mute [16]bool) error {
 	var ch *MuteChange
 	for _, mc := range trk.mc {
 		if mc.Part == part.Name && mc.Tick == tick {
@@ -91,13 +91,13 @@ func SetMute(trk *Track, part *Part, tick int, mute [16]bool) error {
 	return nil
 }
 
-func SetMuted(trk *Track, part *Part, tick int, track int, muted bool) error {
-	mute := Mute(trk, part, tick)
+func (trk *Track) SetMuted(part *Part, tick int, track int, muted bool) error {
+	mute := trk.Mute(part, tick)
 	mute[track] = muted
-	return SetMute(trk, part, tick, mute)
+	return trk.SetMute(part, tick, mute)
 }
 
-func Clear(trk *Track, tick int) (err error) {
+func (trk *Track) Clear(tick int) (err error) {
 	var i int
 	for _, pc := range trk.pc {
 		if pc.Tick == tick {

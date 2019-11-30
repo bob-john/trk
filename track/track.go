@@ -45,7 +45,7 @@ func Open(name string) (*Track, error) {
 	}
 	sortMuteChangeSlice(trk.mc)
 	for _, part := range []*Part{newPart("DIGITAKT", "DT", 16), newPart("DIGITONE", "DN", 8)} {
-		err = CreateIfNotExists(trk, part)
+		err = trk.CreateIfNotExists(part)
 		if err != nil {
 			return nil, err
 		}
