@@ -182,9 +182,7 @@ func clamp(val, min, max int) int {
 }
 
 func render() {
-	tt := NewTimeTracker()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	tt.Trace("clear")
 	var y int
 	var fg, bg termbox.Attribute
 	var recording = model.State == Recording
@@ -202,7 +200,6 @@ func render() {
 		fg, bg = colors(false, recording, track.IsMuteModified(model.Track, part, model.Head))
 		DrawString(8+len(part.ShortName)+1, y, track.FormatMute(mute, part), fg, bg)
 		y++
-		tt.Trace("part")
 	}
 	y++
 	DrawString(0, y, fmt.Sprintf("%03d", 1+model.Page()), termbox.ColorDefault, termbox.ColorDefault)
@@ -213,14 +210,9 @@ func render() {
 		)
 		DrawString(4+(n%8)*3, y+3*(n/16)+(n/8)%2, fmt.Sprintf("%02d", 1+n%16), fg, bg)
 	}
-	tt.Trace("steps")
 	console.Render()
-	tt.Trace("console")
 	ui.Render()
-	tt.Trace("ui")
 	termbox.Flush()
-	tt.Trace("flush")
-	tt.Log()
 }
 
 func colors(highlighted, recording, modified bool) (termbox.Attribute, termbox.Attribute) {
