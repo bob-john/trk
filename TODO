@@ -1,5 +1,16 @@
 In progress
 ===========
+- Display the mute as they appear on the machine (8 under 8 for dt, 2 groups of 2 under 2 for dn)
+- Page with different length (each page would be a part) and step per bar (1 to 16).
+- Fade out FX
+
+Unsorted
+========
+- Play all events when start recording (because we may have forgotten to record before changing the machine state)
+    -> Would be better to keep recording.
+- Stop stops the recording. Why?
+- Send stop to all when moving around? Otherwise, a paused digitone would delay chaning pattern and mute.
+- Full screen UI
 
 Refactoring
 ===========
