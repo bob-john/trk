@@ -1,38 +1,51 @@
 package track
 
-import (
-	"github.com/asdine/storm/q"
-)
-
 func Parts(trk *Track) (parts []*Part, err error) {
-	err = trk.db.All(&parts)
+	return trk.parts, nil
+}
+
+func Pattern(trk *Track, part *Part, tick int) (pattern int) {
+	for _, pc := range trk.pc {
+		if pc.Tick <= tick {
+			if pc.Part == part.Name {
+				pattern = pc.Pattern
+			}
+		} else {
+			break
+		}
+	}
 	return
 }
 
-func Pattern(trk *Track, part *Part, tick int) int {
-	var pc PatternChange
-	query := trk.db.Select(q.Eq("Part", part.Name), q.Lte("Tick", tick)).OrderBy("Tick").Reverse().Limit(1)
-	query.First(&pc)
-	return pc.Pattern
-}
-
 func IsPatternModified(trk *Track, part *Part, tick int) bool {
-	var pc PatternChange
-	n, err := trk.db.Select(q.Eq("Part", part.Name), q.Eq("Tick", tick)).Count(&pc)
-	return err == nil && n != 0
+	for _, pc := range trk.pc {
+		if pc.Tick == tick && pc.Part == part.Name {
+			return true
+		}
+	}
+	return false
 }
 
-func Mute(trk *Track, part *Part, tick int) [16]bool {
-	var mc MuteChange
-	query := trk.db.Select(q.Eq("Part", part.Name), q.Lte("Tick", tick)).OrderBy("Tick").Reverse().Limit(1)
-	query.First(&mc)
-	return mc.Mute
+func Mute(trk *Track, part *Part, tick int) (mute [16]bool) {
+	for _, mc := range trk.mc {
+		if mc.Tick <= tick {
+			if mc.Part == part.Name {
+				mute = mc.Mute
+			}
+		} else {
+			break
+		}
+	}
+	return
 }
 
 func IsMuteModified(trk *Track, part *Part, tick int) bool {
-	var mc MuteChange
-	n, err := trk.db.Select(q.Eq("Part", part.Name), q.Eq("Tick", tick)).Count(&mc)
-	return err == nil && n != 0
+	for _, mc := range trk.mc {
+		if mc.Tick == tick && mc.Part == part.Name {
+			return true
+		}
+	}
+	return false
 }
 
 func IsPartModified(trk *Track, part *Part, tick int) bool {

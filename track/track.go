@@ -1,6 +1,7 @@
 package track
 
 import (
+	"sort"
 	"time"
 
 	"github.com/asdine/storm"
@@ -8,7 +9,10 @@ import (
 )
 
 type Track struct {
-	db *storm.DB
+	db    *storm.DB
+	parts []*Part
+	pc    []*PatternChange
+	mc    []*MuteChange
 }
 
 func Open(name string) (*Track, error) {
@@ -16,7 +20,30 @@ func Open(name string) (*Track, error) {
 	if err != nil {
 		return nil, err
 	}
-	trk := &Track{db}
+	trk := &Track{db, nil, nil, nil}
+	err = db.All(&trk.parts)
+	if err != nil {
+		return nil, err
+	}
+	sortPartSlice(trk.parts)
+	var pcs []*PatternChange
+	err = db.All(&pcs)
+	if err != nil {
+		return nil, err
+	}
+	for _, pc := range pcs {
+		trk.pc = append(trk.pc, pc)
+	}
+	sortPatternChangeSlice(trk.pc)
+	var mcs []*MuteChange
+	err = db.All(&mcs)
+	if err != nil {
+		return nil, err
+	}
+	for _, mc := range mcs {
+		trk.mc = append(trk.mc, mc)
+	}
+	sortMuteChangeSlice(trk.mc)
 	for _, part := range []*Part{newPart("DIGITAKT", "DT", 16), newPart("DIGITONE", "DN", 8)} {
 		err = CreateIfNotExists(trk, part)
 		if err != nil {
@@ -55,6 +82,12 @@ func (p *Part) TrackOf(ch int) int {
 	return -1
 }
 
+func sortPartSlice(sl []*Part) {
+	sort.SliceStable(sl, func(i, j int) bool {
+		return sl[i].Name < sl[j].Name
+	})
+}
+
 type PatternChange struct {
 	ID      string
 	Part    string `storm:"index"`
@@ -62,9 +95,27 @@ type PatternChange struct {
 	Pattern int
 }
 
+func sortPatternChangeSlice(sl []*PatternChange) {
+	sort.SliceStable(sl, func(i, j int) bool {
+		if sl[i].Tick == sl[j].Tick {
+			return sl[i].Part < sl[j].Part
+		}
+		return sl[i].Tick < sl[j].Tick
+	})
+}
+
 type MuteChange struct {
 	ID   string
 	Part string `storm:"index"`
 	Tick int    `storm:"index"`
 	Mute [16]bool
+}
+
+func sortMuteChangeSlice(sl []*MuteChange) {
+	sort.SliceStable(sl, func(i, j int) bool {
+		if sl[i].Tick == sl[j].Tick {
+			return sl[i].Part < sl[j].Part
+		}
+		return sl[i].Tick < sl[j].Tick
+	})
 }
