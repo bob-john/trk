@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"log"
+	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/nsf/termbox-go"
@@ -14,15 +16,18 @@ type Console struct {
 	Enabled       bool
 	width, height int
 	lines         []string
+	mx            sync.Mutex
 }
 
 func NewConsole() *Console {
+	must(os.Remove("trk.log"))
 	c := &Console{width: 80, height: 10}
 	log.SetOutput(c)
 	return c
 }
 
 func (c *Console) Write(p []byte) (n int, err error) {
+	c.writeToFile(p)
 	scanner := bufio.NewScanner(bytes.NewReader(p))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -46,6 +51,23 @@ func (c *Console) Render() {
 	for n, line := range c.lines {
 		DrawString(1, 8+n, line, termbox.ColorDefault, termbox.ColorDefault)
 	}
+}
+
+func (c *Console) writeToFile(b []byte) (err error) {
+	f, err := os.OpenFile("trk.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, err = f.Write(b)
+	if err != nil {
+		return
+	}
+	err = f.Sync()
+	if err != nil {
+		return
+	}
+	return f.Close()
 }
 
 type TimeTracker struct {
