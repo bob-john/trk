@@ -45,8 +45,12 @@ func (i *inPort) Close() (err error) {
 	if !i.opened {
 		return nil
 	}
-	defer i.input.Destroy()
-	return i.input.Close()
+	err = i.input.Close()
+	if err != nil {
+		return
+	}
+	i.opened = false
+	return
 }
 
 func (i *inPort) IsOpen() bool {

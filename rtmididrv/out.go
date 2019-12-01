@@ -30,12 +30,16 @@ func (o *outPort) Open() (err error) {
 	return
 }
 
-func (o *outPort) Close() error {
+func (o *outPort) Close() (err error) {
 	if !o.opened {
-		return nil
+		return
 	}
-	defer o.output.Destroy()
-	return o.output.Close()
+	err = o.output.Close()
+	if err != nil {
+		return
+	}
+	o.opened = false
+	return
 }
 
 func (o *outPort) IsOpen() bool {
