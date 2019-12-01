@@ -89,9 +89,9 @@ func main() {
 				case termbox.KeyPgup:
 					model.SetPage(model.Page() - 1)
 				case termbox.KeyHome:
-					model.SetPage(0)
+					model.SetHead(0)
 				case termbox.KeyEnd:
-					model.SetPage(model.LastPage())
+					model.SetHead(model.LastStep())
 
 				case termbox.KeyArrowRight:
 					model.SetX(model.X() + 1)

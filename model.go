@@ -46,6 +46,10 @@ func (m *Model) LastPage() int {
 	return 512 - 1
 }
 
+func (m *Model) LastStep() int {
+	return (m.LastPage()+1)*16 - 1
+}
+
 func (m *Model) ToggleRecording() {
 	switch m.State {
 	case Viewing:
@@ -61,6 +65,10 @@ func (m *Model) HeadForTrig(val int) int {
 
 func (m *Model) SetTrig(val int) {
 	m.setHead(m.Page(), val%8, val/8)
+}
+
+func (m *Model) SetHead(step int) {
+	m.setHead(0, step, 0)
 }
 
 func (m *Model) setHead(pattern, x, y int) {
