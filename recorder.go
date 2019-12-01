@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/mid"
@@ -10,22 +11,23 @@ import (
 )
 
 type Recorder struct {
-	ports chan<- []string
+	ports chan<- listenCmd
 	c     <-chan Message
 }
 
 func NewRecorder() *Recorder {
 	var (
-		ports = make(chan []string)
+		ports = make(chan listenCmd)
 		c     = make(chan Message)
 	)
 	go func() {
 		opened := make(map[string]chan struct{})
-		for names := range ports {
+		for cmd := range ports {
 			required := make(map[string]bool)
-			for _, name := range names {
+			for _, name := range cmd.names {
 				if _, ok := opened[name]; !ok {
 					port, err := mid.OpenIn(midiDriver, -1, name)
+					log.Printf("recorder: open %s: %v", port, err)
 					if err != nil {
 						continue
 					}
@@ -58,7 +60,8 @@ func NewRecorder() *Recorder {
 							case m := <-msg:
 								c <- Message{port.String(), m}
 							case <-quit:
-								port.Close()
+								err := port.Close()
+								log.Printf("recorder: close %s: %v", port, err)
 								return
 							}
 						}
@@ -73,20 +76,34 @@ func NewRecorder() *Recorder {
 					delete(opened, name)
 				}
 			}
+			if cmd.ack != nil {
+				cmd.ack <- struct{}{}
+			}
 		}
 	}()
 	return &Recorder{ports, c}
 }
 
 func (r *Recorder) Listen(names []string) {
-	r.ports <- names
+	r.ports <- listenCmd{names, nil}
 }
 
 func (r *Recorder) C() <-chan Message {
 	return r.c
 }
 
+func (r *Recorder) Close() {
+	ack := make(chan struct{})
+	r.ports <- listenCmd{nil, ack}
+	<-ack
+}
+
 type Message struct {
 	Port    string
 	Message midi.Message
+}
+
+type listenCmd struct {
+	names []string
+	ack   chan struct{}
 }

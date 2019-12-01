@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"log"
 	"trk/track"
 
 	"gitlab.com/gomidi/midi"
@@ -41,6 +42,12 @@ func (p *Player) PlayMute(trk *track.Track, tick int) {
 	p.flush()
 }
 
+func (p *Player) Close() {
+	for name := range p.ports {
+		p.close(name)
+	}
+}
+
 func (p *Player) writePattern(trk *track.Track, part *track.Part, tick int) {
 	pattern := trk.Pattern(part, tick)
 	p.write(part.ProgChgPortOut, p.pattern(part, pattern))
@@ -78,6 +85,7 @@ func (p *Player) flush() {
 		if !ok {
 			var err error
 			port, err = mid.OpenOut(midiDriver, -1, e.Port)
+			log.Printf("player: open %s: %v", port, err)
 			if err != nil {
 				continue
 			}
@@ -90,16 +98,27 @@ func (p *Player) flush() {
 	for _, e := range p.next.Events {
 		required[e.Port] = true
 	}
-	for name, port := range p.ports {
+	for name := range p.ports {
 		if !required[name] {
-			if port.Close() == nil {
-				delete(p.ports, name)
-			}
+			p.close(name)
 		}
 	}
 
 	p.last.Merge(p.next)
 	p.next.Clear()
+}
+
+func (p *Player) close(name string) {
+	port, ok := p.ports[name]
+	if !ok {
+		return
+	}
+	err := port.Close()
+	log.Printf("player: close %s: %v", port, err)
+	if err != nil {
+		return
+	}
+	delete(p.ports, name)
 }
 
 type playEvent struct {

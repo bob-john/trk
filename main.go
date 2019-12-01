@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -25,19 +26,24 @@ var (
 func main() {
 	var err error
 
-	if len(os.Args) != 2 {
+	defer player.Close()
+	defer recorder.Close()
+
+	flag.Parse()
+
+	if len(flag.Args()) != 1 {
 		fmt.Println("usage: trk <path>")
 		fmt.Println("trk: invalid command")
 		os.Exit(1)
 	}
 
+	model.Track, err = track.Open(flag.Arg(0))
+	must(err)
+	defer model.Track.Close()
+
 	err = termbox.Init()
 	must(err)
 	defer termbox.Close()
-
-	model.Track, err = track.Open(os.Args[1])
-	must(err)
-	defer model.Track.Close()
 
 	player.Play(model.Track, 0)
 	recorder.Listen(model.Track.InputPorts())
