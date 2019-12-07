@@ -20,7 +20,7 @@ type Console struct {
 }
 
 func NewConsole() *Console {
-	must(os.Remove("trk.log"))
+	os.Remove("trk.log")
 	c := &Console{width: 80, height: 10}
 	log.SetOutput(c)
 	return c
