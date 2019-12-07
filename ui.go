@@ -71,7 +71,7 @@ func (d *Dialog) Handle(ui *UI, e termbox.Event) {
 	switch e.Key {
 	case termbox.KeyEsc:
 		ui.Dismiss()
-	case termbox.KeyBackspace:
+	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		if len(d.stack) > 1 {
 			d.Back()
 		} else {
