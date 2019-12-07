@@ -9,12 +9,17 @@ BUG
     - Erase step 1 BUG chann 1 is still muted
 - Always keep the state of the devices, even when not recording.
     - Change to pattern 2
-    - Start recording BUG Sequence is not on pattern 2 and the device won't send pattern 2 because it is already activated. 
+    - Start recording BUG Sequence is not on pattern 2 and the device won't send pattern 2 because it is already activated.
 
 IMPROVEMENTS
 ============
 - Continous recording. Having to restart recording after each move is tiresome. Pause recording while playing is safe (but keep the recording state?).
 - Use all of the screen for the UI. Option window could be on the right with full height (would ease browsing MIDI ports).
+- Record while playing.
+- Could trk be a MIDI recorder/player? Would require: 
+    - Display CC/PC "properly" (maybe on the right side isntead of top)
+    - Add filter for input and output (mayba as a proxy config: allow, deny, allow all, deny all, etc.)
+    - Add redirect with filter (DT->DN, real time+mute only by eg.)
 
 UNSORTED
 ========
