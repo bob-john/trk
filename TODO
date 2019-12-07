@@ -7,6 +7,9 @@ BUG
 - Erase does not send events.
     - Step 1 : Record mute chann 1
     - Erase step 1 BUG chann 1 is still muted
+- Always keep the state of the devices, even when not recording.
+    - Change to pattern 2
+    - Start recording BUG Sequence is not on pattern 2 and the device won't send pattern 2 because it is already activated. 
 
 IMPROVEMENTS
 ============
