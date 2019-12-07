@@ -1,24 +1,29 @@
-In progress
-===========
-- Display the mute as they appear on the machine (8 under 8 for dt, 2 groups of 2 under 2 for dn)
+BUG
+===
+- New recorded events are not sent to the player state.
+    - Step 1 : Record unmute chann 1
+    - Step 2 : Record mute chann 1
+    - Move back to step 1 BUG chann 1 is still muted
+- Erase does not send events.
+    - Step 1 : Record mute chann 1
+    - Erase step 1 BUG chann 1 is still muted
+
+IMPROVEMENTS
+============
+- Continous recording. Having to restart recording after each move is tiresome. Pause recording while playing is safe (but keep the recording state?).
+- Use all of the screen for the UI. Option window could be on the right with full height (would ease browsing MIDI ports).
+
+UNSORTED
+========
 - Page with different length (each page would be a part) and step per bar (1 to 16).
 - Fade out FX
-
-Unsorted
-========
 - Play all events when start recording (because we may have forgotten to record before changing the machine state)
     -> Would be better to keep recording.
 - Stop stops the recording. Why?
 - Send stop to all when moving around? Otherwise, a paused digitone would delay chaning pattern and mute.
 - Full screen UI
-
-Refactoring
-===========
-- Row -> Step // no more row but tick and step would be cool
-- Device model or template (ie. DT vs DN to format display and configure).
-
-Features
-========
+- [Refactoring] Row -> Step // no more row but tick and step would be cool
+- [Refactoring] Device model or template (ie. DT vs DN to format display and configure).
 - Temp file saved and restored automatically. Ctrl+S to save explicitely. Ctrl+L or R to reload from disk (with confirmation).
 - Add pattern length + global scale + bank scale + pattern scale.
 - Song part? Could be bank + 16 patterns with bank length. Ctrl+PgUp/PgDn to change bank. Have an "original" mode with 8 banks of 16 patterns and an extended mode of 25 banks of 99 patterns.
