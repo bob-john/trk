@@ -26,7 +26,7 @@ func (ui *UI) Handle(e termbox.Event) bool {
 	if ui.dialog == nil {
 		return false
 	}
-	if IsKey(e, termbox.KeyEsc) {
+	if IsKey(e, termbox.KeyEsc, termbox.KeyCtrlO) {
 		ui.Dismiss()
 	} else if ui.dialog != nil {
 		ui.dialog.Handle(ui, e)
@@ -41,12 +41,11 @@ func (ui *UI) Render() {
 }
 
 type Dialog struct {
-	x, y  int
 	stack []*OptionPage
 }
 
-func NewDialog(x, y int, model *OptionPage) *Dialog {
-	return &Dialog{x, y, []*OptionPage{model}}
+func NewDialog(model *OptionPage) *Dialog {
+	return &Dialog{[]*OptionPage{model}}
 }
 
 func (d *Dialog) Page() *OptionPage {
@@ -64,31 +63,40 @@ func (d *Dialog) Back() {
 	}
 }
 
-func (d *Dialog) Handle(ui *UI, e termbox.Event) {
+func (d *Dialog) Handle(ui *UI, e termbox.Event) (handled bool) {
 	if e.Type != termbox.EventKey {
+		return
+	}
+	handled = d.Page().Handle(d, e)
+	if handled {
 		return
 	}
 	switch e.Key {
 	case termbox.KeyEsc:
 		ui.Dismiss()
-	case termbox.KeyBackspace, termbox.KeyBackspace2:
+		handled = true
+	case termbox.KeyBackspace, termbox.KeyBackspace2, termbox.KeyArrowLeft:
 		if len(d.stack) > 1 {
 			d.Back()
 		} else {
 			ui.Dismiss()
 		}
-	default:
-		d.Page().Handle(d, e)
+		handled = true
 	}
+	return
 }
 
 func (d *Dialog) Render() {
-	page := d.Page()
-	title := page.title
-	sz := page.PreferredSize().Union(MakeSize(len(title)+4, 0))
-	DrawBox(d.x, d.y, d.x+sz.Width, d.y+sz.Height, termbox.ColorDefault, termbox.ColorDefault)
-	DrawString(d.x+1, d.y, " "+title+" ", termbox.ColorDefault, termbox.ColorDefault)
-	page.Render(d.x+1, d.y+1, sz.Width)
+	var (
+		page  = d.Page()
+		title = page.title
+		sz    = page.PreferredSize().Union(MakeSize(len(title)+4, 0))
+		w, h  = termbox.Size()
+		x, y  = (w - sz.Width) / 2, (h - sz.Height) / 2
+	)
+	DrawBox(x, y, x+sz.Width, y+sz.Height, termbox.ColorDefault, termbox.ColorDefault)
+	DrawString(x+1, y, " "+title+" ", termbox.ColorDefault, termbox.ColorDefault)
+	page.Render(x+1, y+1, sz.Width, sz.Height)
 }
 
 type OptionPage struct {
@@ -102,13 +110,13 @@ func NewOptionPage(title string) *OptionPage {
 	return &OptionPage{title, nil, 0, 0}
 }
 
-func (p *OptionPage) AddMenu(title string, build func(page *OptionPage)) {
+func (p *OptionPage) Page(title string, build func(page *OptionPage)) {
 	page := &OptionPage{title, nil, 0, 0}
 	p.items = append(p.items, &Menu{title, page})
 	build(page)
 }
 
-func (p *OptionPage) AddCheckbox(title string, on bool, onchange func(bool)) {
+func (p *OptionPage) Checkbox(title string, on bool, onchange func(bool)) {
 	p.items = append(p.items, &Checkbox{title, on, onchange})
 }
 
@@ -128,8 +136,9 @@ func (p *OptionPage) PreferredSize() Size {
 			sz.Width = minWidth
 		}
 	}
-	if sz.Height > 6 {
-		sz.Height = 6
+	_, h := termbox.Size()
+	if sz.Height > h-2 {
+		sz.Height = h - 2
 	}
 	return sz
 }
@@ -139,7 +148,7 @@ func (p *OptionPage) OnEnter() {
 	p.offset = 0
 }
 
-func (p *OptionPage) Handle(d *Dialog, e termbox.Event) {
+func (p *OptionPage) Handle(d *Dialog, e termbox.Event) (handled bool) {
 	if e.Type != termbox.EventKey {
 		return
 	}
@@ -149,24 +158,27 @@ func (p *OptionPage) Handle(d *Dialog, e termbox.Event) {
 		if p.selected >= p.offset+5 {
 			p.offset++
 		}
+		handled = true
 	case termbox.KeyArrowUp:
 		p.selected--
 		if p.selected < p.offset {
 			p.offset--
 		}
+		handled = true
 	default:
-		p.items[p.selected].Handle(d, e)
+		handled = p.items[p.selected].Handle(d, e)
 	}
-	p.selected = clamp(p.selected, 0, len(p.items)-1)
+	p.selected = Clamp(p.selected, 0, len(p.items)-1)
 	if len(p.items) > 5 {
-		p.offset = clamp(p.offset, 0, len(p.items)-5)
+		p.offset = Clamp(p.offset, 0, len(p.items)-5)
 	} else {
 		p.offset = 0
 	}
+	return
 }
 
-func (p *OptionPage) Render(x, y, width int) {
-	for n := 0; n < 5; n++ {
+func (p *OptionPage) Render(x, y, width, height int) {
+	for n := 0; n < height; n++ {
 		if p.offset+n >= len(p.items) {
 			return
 		}
@@ -177,13 +189,13 @@ func (p *OptionPage) Render(x, y, width int) {
 		}
 		DrawString(x, y+n, item.String(width), fg, bg)
 	}
-	if len(p.items) > 5 {
-		DrawString(x+width-1, y+5*p.selected/len(p.items), "\u2590", termbox.ColorDefault, termbox.ColorDefault)
+	if len(p.items) > height {
+		DrawString(x+width-1, y+height*p.selected/len(p.items), "\u2590", termbox.ColorDefault, termbox.ColorDefault)
 	}
 }
 
 type OptionItem interface {
-	Handle(*Dialog, termbox.Event)
+	Handle(*Dialog, termbox.Event) bool
 	String(int) string
 	MinWidth() int
 }
@@ -193,10 +205,12 @@ type Menu struct {
 	page  *OptionPage
 }
 
-func (m *Menu) Handle(dialog *Dialog, e termbox.Event) {
+func (m *Menu) Handle(dialog *Dialog, e termbox.Event) bool {
 	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		dialog.Enter(m.page)
+		return true
 	}
+	return false
 }
 
 func (m *Menu) String(width int) string {
@@ -213,11 +227,13 @@ type Checkbox struct {
 	onchange func(bool)
 }
 
-func (c *Checkbox) Handle(dialog *Dialog, e termbox.Event) {
+func (c *Checkbox) Handle(dialog *Dialog, e termbox.Event) bool {
 	if IsKey(e, termbox.KeyArrowRight, termbox.KeyEnter) {
 		c.on = !c.on
 		c.onchange(c.on)
+		return true
 	}
+	return false
 }
 
 func (c *Checkbox) String(width int) string {
@@ -239,7 +255,7 @@ type Picker struct {
 	onchange func(int)
 }
 
-func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
+func (p *Picker) Handle(dialog *Dialog, e termbox.Event) (handled bool) {
 	if e.Type != termbox.EventKey {
 		return
 	}
@@ -248,12 +264,15 @@ func (p *Picker) Handle(dialog *Dialog, e termbox.Event) {
 		if _, ok := p.values[p.selected+1]; ok {
 			p.selected++
 		}
+		handled = true
 	case termbox.KeyArrowLeft:
 		if _, ok := p.values[p.selected-1]; ok {
 			p.selected--
 		}
+		handled = true
 	}
 	p.onchange(p.selected)
+	return
 }
 
 func (p *Picker) String(width int) string {
@@ -274,7 +293,9 @@ type Label struct {
 	text string
 }
 
-func (*Label) Handle(dialog *Dialog, e termbox.Event) {}
+func (*Label) Handle(dialog *Dialog, e termbox.Event) bool {
+	return false
+}
 
 func (l *Label) String(width int) string {
 	return LayoutString(l.text, "", width)

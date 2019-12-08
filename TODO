@@ -1,9 +1,10 @@
 IN PROGRESS
 ===========
 - Could trk be a MIDI recorder/player? Would require: 
-    - Display CC/PC "properly" (maybe on the right side isntead of top)
-    - Add filter for input and output (mayba as a proxy config: allow, deny, allow all, deny all, etc.)
+    - Display CC/PC "properly" (maybe on the right side instead of top)
+    - Add filter for input and output (maybe as a proxy config: allow, deny, allow all, deny all, etc.)
     - Add redirect with filter (DT->DN, real time+mute only by eg.)
+-> See http://www.midish.org/
 
 BUG
 ===

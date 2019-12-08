@@ -9,10 +9,12 @@ import (
 )
 
 type Track struct {
-	db    *storm.DB
-	parts []*Part
-	pc    []*PatternChange
-	mc    []*MuteChange
+	db      *storm.DB
+	parts   []*Part
+	pc      []*PatternChange
+	mc      []*MuteChange
+	events  []*Event
+	filters []*Filter
 }
 
 func Open(name string) (*Track, error) {
@@ -20,30 +22,32 @@ func Open(name string) (*Track, error) {
 	if err != nil {
 		return nil, err
 	}
-	trk := &Track{db, nil, nil, nil}
+	trk := &Track{db: db}
 	err = db.All(&trk.parts)
 	if err != nil {
 		return nil, err
 	}
 	sortPartSlice(trk.parts)
-	var pcs []*PatternChange
-	err = db.All(&pcs)
+	err = db.All(&trk.pc)
 	if err != nil {
 		return nil, err
-	}
-	for _, pc := range pcs {
-		trk.pc = append(trk.pc, pc)
 	}
 	sortPatternChangeSlice(trk.pc)
-	var mcs []*MuteChange
-	err = db.All(&mcs)
+	err = db.All(&trk.mc)
 	if err != nil {
 		return nil, err
 	}
-	for _, mc := range mcs {
-		trk.mc = append(trk.mc, mc)
-	}
 	sortMuteChangeSlice(trk.mc)
+	err = db.All(&trk.events)
+	if err != nil {
+		return nil, err
+	}
+	sortEventSlice(trk.events)
+	err = db.All(&trk.filters)
+	if err != nil {
+		return nil, err
+	}
+	sortFilterSlice(trk.filters)
 	for _, part := range []*Part{newPart("DIGITAKT", "DT", 16), newPart("DIGITONE", "DN", 8)} {
 		err = trk.CreateIfNotExists(part)
 		if err != nil {
@@ -117,5 +121,43 @@ func sortMuteChangeSlice(sl []*MuteChange) {
 			return sl[i].Part < sl[j].Part
 		}
 		return sl[i].Tick < sl[j].Tick
+	})
+}
+
+type Event struct {
+	ID    string
+	Port  string
+	Tick  int
+	Bytes []byte
+}
+
+func sortEventSlice(sl []*Event) {
+	sort.SliceStable(sl, func(i, j int) bool {
+		if sl[i].Tick == sl[j].Tick {
+			return sl[i].Port < sl[j].Port
+		}
+		return sl[i].Tick < sl[j].Tick
+	})
+}
+
+type Filter struct {
+	ID                   string
+	OrderBy              int
+	Inputs               []string
+	Outputs              []string
+	Note                 bool
+	PolyphonicAftertouch bool
+	ControlChange        bool
+	ProgramChange        bool
+	ChannelAftertouch    bool
+	PitchBendChange      bool
+}
+
+func sortFilterSlice(sl []*Filter) {
+	sort.SliceStable(sl, func(i, j int) bool {
+		if sl[i].OrderBy == sl[j].OrderBy {
+			return sl[i].ID < sl[j].ID
+		}
+		return sl[i].OrderBy < sl[j].OrderBy
 	})
 }

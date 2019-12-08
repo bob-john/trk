@@ -48,11 +48,29 @@ func (trk *Track) IsMuteModified(part *Part, tick int) bool {
 	return false
 }
 
+func (trk *Track) Events(tick int) (events []*Event) {
+	for _, e := range trk.events {
+		if e.Tick == tick {
+			events = append(events, e)
+		} else if e.Tick > tick {
+			return
+		}
+	}
+	return
+}
+
 func (trk *Track) IsPartModified(part *Part, tick int) bool {
 	return trk.IsPatternModified(part, tick) || trk.IsMuteModified(part, tick)
 }
 
 func (trk *Track) IsModified(tick int) bool {
+	for _, e := range trk.events {
+		if e.Tick == tick {
+			return true
+		} else if e.Tick > tick {
+			break
+		}
+	}
 	for _, part := range trk.parts {
 		if trk.IsPatternModified(part, tick) {
 			return true
@@ -62,6 +80,10 @@ func (trk *Track) IsModified(tick int) bool {
 		}
 	}
 	return false
+}
+
+func (trk *Track) Filters() []*Filter {
+	return trk.filters
 }
 
 func (trk *Track) InputPorts() (ports []string) {

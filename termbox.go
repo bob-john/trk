@@ -47,3 +47,22 @@ func DrawBox(left, top, right, bottom int, fg, bg termbox.Attribute) {
 	termbox.SetCell(left, bottom, '└', fg, bg)
 	termbox.SetCell(right, bottom, '┘', fg, bg)
 }
+
+type Writer struct {
+	X, Y   int
+	Fg, Bg termbox.Attribute
+}
+
+func (w *Writer) Write(p []byte) (n int, err error) {
+	for _, c := range string(p) {
+		switch c {
+		case '\n':
+			w.X = 0
+			w.Y++
+		default:
+			termbox.SetCell(w.X, w.Y, c, w.Fg, w.Bg)
+			w.X++
+		}
+	}
+	return len(p), nil
+}

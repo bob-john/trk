@@ -17,7 +17,7 @@ func (m *Model) Page() int {
 }
 
 func (m *Model) SetPage(val int) {
-	m.setHead(clamp(val, 0, m.LastPage()), m.X(), m.Y())
+	m.setHead(Clamp(val, 0, m.LastPage()), m.X(), m.Y())
 }
 
 func (m *Model) X() int {
@@ -79,7 +79,7 @@ func (m *Model) setHead(pattern, x, y int) {
 }
 
 func (m *Model) makeHead(pattern, x, y int) int {
-	return clamp(pattern*16+y*8+x, 0, 512*16-1)
+	return Clamp(pattern*16+y*8+x, 0, 512*16-1)
 }
 
 type State int

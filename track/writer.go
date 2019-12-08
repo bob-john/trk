@@ -98,7 +98,7 @@ func (trk *Track) SetMuted(part *Part, tick int, track int, muted bool) error {
 }
 
 func (trk *Track) Clear(tick int) (err error) {
-	var i int
+	var pcs []*PatternChange
 	for _, pc := range trk.pc {
 		if pc.Tick == tick {
 			err = trk.db.DeleteStruct(pc)
@@ -106,13 +106,12 @@ func (trk *Track) Clear(tick int) (err error) {
 				return
 			}
 		} else {
-			trk.pc[i] = pc
-			i++
+			pcs = append(pcs, pc)
 		}
 	}
-	trk.pc = trk.pc[:i]
+	trk.pc = pcs
 
-	i = 0
+	var mcs []*MuteChange
 	for _, mc := range trk.mc {
 		if mc.Tick == tick {
 			err = trk.db.DeleteStruct(mc)
@@ -120,12 +119,62 @@ func (trk *Track) Clear(tick int) (err error) {
 				return
 			}
 		} else {
-			trk.mc[i] = mc
-			i++
+			mcs = append(mcs, mc)
 		}
 	}
-	trk.mc = trk.mc[:i]
+	trk.mc = mcs
 
+	var events []*Event
+	for _, ev := range trk.events {
+		if ev.Tick == tick {
+			err = trk.db.DeleteStruct(ev)
+			if err != nil {
+				return
+			}
+		} else {
+			events = append(events, ev)
+		}
+	}
+	trk.events = events
+
+	return
+}
+
+func (e *Event) Save(trk *Track) (err error) {
+	if e.ID == "" {
+		e.ID = makeID()
+	}
+	err = trk.db.Save(e)
+	if err != nil {
+		return
+	}
+	for n, old := range trk.events {
+		if old.ID == e.ID {
+			trk.events[n] = e
+			return
+		}
+	}
+	trk.events = append(trk.events, e)
+	sortEventSlice(trk.events)
+	return
+}
+
+func (f *Filter) Save(trk *Track) (err error) {
+	if f.ID == "" {
+		f.ID = makeID()
+	}
+	err = trk.db.Save(f)
+	if err != nil {
+		return
+	}
+	for n, old := range trk.filters {
+		if old.ID == f.ID {
+			trk.filters[n] = f
+			return
+		}
+	}
+	trk.filters = append(trk.filters, f)
+	sortFilterSlice(trk.filters)
 	return
 }
 
