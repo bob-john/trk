@@ -1,3 +1,10 @@
+IN PROGRESS
+===========
+- Could trk be a MIDI recorder/player? Would require: 
+    - Display CC/PC "properly" (maybe on the right side isntead of top)
+    - Add filter for input and output (mayba as a proxy config: allow, deny, allow all, deny all, etc.)
+    - Add redirect with filter (DT->DN, real time+mute only by eg.)
+
 BUG
 ===
 - New recorded events are not sent to the player state.
@@ -16,10 +23,6 @@ IMPROVEMENTS
 - Continous recording. Having to restart recording after each move is tiresome. Pause recording while playing is safe (but keep the recording state?).
 - Use all of the screen for the UI. Option window could be on the right with full height (would ease browsing MIDI ports).
 - Record while playing.
-- Could trk be a MIDI recorder/player? Would require: 
-    - Display CC/PC "properly" (maybe on the right side isntead of top)
-    - Add filter for input and output (mayba as a proxy config: allow, deny, allow all, deny all, etc.)
-    - Add redirect with filter (DT->DN, real time+mute only by eg.)
 
 UNSORTED
 ========
