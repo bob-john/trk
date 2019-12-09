@@ -21,25 +21,25 @@ func NewPlayer() *Player {
 }
 
 func (p *Player) Play(trk *track.Track, tick int) {
-	for _, part := range trk.Parts() {
-		p.writePattern(trk, part, tick)
-		p.writeMute(trk, part, tick)
-	}
-	p.flush()
+	// for _, part := range trk.Parts() {
+	// 	p.writePattern(trk, part, tick)
+	// 	p.writeMute(trk, part, tick)
+	// }
+	// p.flush()
 }
 
 func (p *Player) PlayPattern(trk *track.Track, tick int) {
-	for _, part := range trk.Parts() {
-		p.writePattern(trk, part, tick)
-	}
-	p.flush()
+	// for _, part := range trk.Parts() {
+	// 	p.writePattern(trk, part, tick)
+	// }
+	// p.flush()
 }
 
 func (p *Player) PlayMute(trk *track.Track, tick int) {
-	for _, part := range trk.Parts() {
-		p.writeMute(trk, part, tick)
-	}
-	p.flush()
+	// for _, part := range trk.Parts() {
+	// 	p.writeMute(trk, part, tick)
+	// }
+	// p.flush()
 }
 
 func (p *Player) Close() {
@@ -48,31 +48,31 @@ func (p *Player) Close() {
 	}
 }
 
-func (p *Player) writePattern(trk *track.Track, part *track.Part, tick int) {
-	pattern := trk.Pattern(part, tick)
-	p.write(part.ProgChgPortOut, p.pattern(part, pattern))
-}
+// func (p *Player) writePattern(trk *track.Track, part *track.Part, tick int) {
+// 	pattern := trk.Pattern(part, tick)
+// 	p.write(part.ProgChgPortOut, p.pattern(part, pattern))
+// }
 
-func (p *Player) pattern(part *track.Part, pattern int) midi.Message {
-	return channel.Channel(part.ProgChgOutCh).ProgramChange(uint8(pattern))
-}
+// func (p *Player) pattern(part *track.Part, pattern int) midi.Message {
+// 	return channel.Channel(part.ProgChgOutCh).ProgramChange(uint8(pattern))
+// }
 
-func (p *Player) writeMute(trk *track.Track, part *track.Part, tick int) {
-	mute := trk.Mute(part, tick)
-	for n, ch := range part.TrackCh {
-		if ch == -1 {
-			continue
-		}
-		p.write(part.MutePortOut, p.mute(part, ch, mute[n]))
-	}
-}
+// func (p *Player) writeMute(trk *track.Track, part *track.Part, tick int) {
+// 	mute := trk.Mute(part, tick)
+// 	for n, ch := range part.TrackCh {
+// 		if ch == -1 {
+// 			continue
+// 		}
+// 		p.write(part.MutePortOut, p.mute(part, ch, mute[n]))
+// 	}
+// }
 
-func (p *Player) mute(part *track.Part, ch int, muted bool) midi.Message {
-	if muted {
-		return channel.Channel(ch).ControlChange(94, 1)
-	}
-	return channel.Channel(ch).ControlChange(94, 0)
-}
+// func (p *Player) mute(part *track.Part, ch int, muted bool) midi.Message {
+// 	if muted {
+// 		return channel.Channel(ch).ControlChange(94, 1)
+// 	}
+// 	return channel.Channel(ch).ControlChange(94, 0)
+// }
 
 func (p *Player) write(ports []string, message midi.Message) {
 	p.next.Insert(ports, message)

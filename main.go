@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"text/tabwriter"
 	"trk/rtmididrv"
 	"trk/track"
 
 	"github.com/gomidi/midi/midimessage/channel"
+	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
 
@@ -27,6 +29,16 @@ func main() {
 	defer recorder.Close()
 
 	flag.Parse()
+
+	if len(flag.Args()) != 1 {
+		fmt.Println("usage: trk <path>")
+		fmt.Println("trk: invalid command")
+		os.Exit(1)
+	}
+
+	model.Track, err = track.Open(flag.Arg(0))
+	must(err)
+	defer model.Track.Close()
 
 	err = termbox.Init()
 	must(err)
@@ -54,6 +66,8 @@ func main() {
 	for !done {
 		render()
 
+		recorder.Listen(model.Track.InputPorts())
+
 		select {
 		case e := <-eventC:
 			if ui.Handle(e) {
@@ -69,6 +83,19 @@ func main() {
 			}
 
 		case m := <-midiC:
+			switch m.Message {
+			case realtime.TimingClock:
+				if model.State == Playing {
+					tick++
+				}
+			case realtime.Start:
+				model.State = Playing
+				tick = 0
+			case realtime.Continue:
+				model.State = Playing
+			case realtime.Stop:
+				model.State = Viewing
+			}
 			switch msg := m.Message.(type) {
 			case channel.Message:
 				must((&track.Event{"", m.Port, tick, msg.Raw()}).Save(model.Track))
@@ -82,7 +109,10 @@ func main() {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	w := tabwriter.NewWriter(&Writer{}, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "Time\tPort\tCh\tType\tSubtype/Note\tValue")
+	fmt.Fprintln(w, "#\tTime\tPort\tCh\tType\tSubtype/Note\tValue")
+	for n, e := range model.Track.Events() {
+		fmt.Fprintf(w, "%o\t%d\t%s\t-\t-\t-\t-\n", 1+n, e.Tick, e.Port)
+	}
 	w.Flush()
 	console.Render()
 	ui.Render()
@@ -91,23 +121,24 @@ func render() {
 
 func options() *OptionPage {
 	var (
-		inputs, _  = midiDriver.Ins()
-		outputs, _ = midiDriver.Outs()
+		p         = NewOptionPage("MIDI CONFIG")
+		inputs, _ = midiDriver.Ins()
+		// outputs, _ = midiDriver.Outs()
 	)
-	options := NewOptionPage("TRK")
-	options.Page("MIDI CONFIG", func(p *OptionPage) {
-		p.Page("INPUT", func(p *OptionPage) {
-			for _, port := range inputs {
-				p.Checkbox(port.String(), false, func(val bool) {})
-			}
-		})
-		p.Page("OUTPUT", func(p *OptionPage) {
-			for _, port := range outputs {
-				p.Checkbox(port.String(), false, func(val bool) {})
-			}
-		})
+	p.Page("INPUT PORTS", func(p *OptionPage) {
+		for _, port := range inputs {
+			port := port.String()
+			p.Checkbox(port, model.Track.Input(port) != nil, func(val bool) {
+				must(model.Track.SetInput(port, val))
+			})
+		}
 	})
-	return options
+	// p.Page("OUT PORTS", func(p *OptionPage) {
+	// 	for _, port := range outputs {
+	// 		p.Checkbox(port.String(), false, func(val bool) {})
+	// 	}
+	// })
+	return p
 }
 
 // var (
