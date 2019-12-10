@@ -81,6 +81,12 @@ func main() {
 					ui.Show(NewDialog(options()))
 				case termbox.KeyCtrlD:
 					console.Enabled = !console.Enabled
+
+				case termbox.KeyEnter, termbox.KeySpace:
+					if model.State == Recording {
+						must(model.Track.Save())
+					}
+					model.ToggleRecording()
 				}
 			}
 
@@ -89,6 +95,7 @@ func main() {
 			case realtime.TimingClock:
 				if model.State == Playing {
 					tick++
+					// player.Play(model.Track.OutPorts(m.Port, m.Message.Raw()), m.Message)
 				}
 			case realtime.Start:
 				model.State = Playing
@@ -97,25 +104,36 @@ func main() {
 				model.State = Playing
 			case realtime.Stop:
 				model.State = Viewing
-			}
-			player.Play(model.Track.OutPorts(m.Port, m.Message.Raw()), m.Message)
+				must(model.Track.Save())
 
-			// switch msg := m.Message.(type) {
-			// case channel.Message:
-			// 	model.Track.Insert(&track.Event{Tick: tick, Port: m.Port, Message: msg.Raw()})
-			// }
+			default:
+				if model.State == Recording {
+					port, message := m.Port, m.Message.Raw()
+					if len(message) > 0 && message[0] >= 0x80 && message[0] <= 0xf0 {
+						model.Track.Insert(tick, port, message)
+					}
+				}
+			}
 		}
 	}
 
 	termbox.Interrupt()
+
+	must(model.Track.Save())
 }
 
 func render() {
+	_, pageSize := termbox.Size()
+	pageSize -= 2
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	w := tabwriter.NewWriter(&Writer{}, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "#\tTime\tDevice\tCh\tType\tSubtype/Note\tValue")
-	for n, e := range model.Track.Events {
-		fmt.Fprintf(w, "%o\t%d\t%s\t-\t-\t-\t-\n", 1+n, e.Tick, e.Port)
+	w := tabwriter.NewWriter(&Writer{}, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "#\tTime\tPort\tCh\tType\tSubtype/Note\tValue")
+	events, base := model.Track.Events, 1
+	if len(events) > pageSize {
+		events, base = events[len(events)-pageSize:], len(events)-pageSize
+	}
+	for i, e := range events {
+		fmt.Fprintf(w, "%o\t%d\t%s\t%d\t%s\t-\t-\n", base+i, e.Tick, e.Port, e.Channel(), e.Type())
 	}
 	w.Flush()
 	console.Render()

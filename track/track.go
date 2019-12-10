@@ -110,15 +110,8 @@ func (trk *Track) CreateMissingRoutes() (err error) {
 	return
 }
 
-func (trk *Track) Insert(obj interface{}) error {
-	switch obj := obj.(type) {
-	case *Event:
-		trk.Events = append(trk.Events, obj)
-
-	default:
-		return ErrBadType
-	}
-	return trk.Save()
+func (trk *Track) Insert(tick int, port string, message []byte) {
+	trk.Events = append(trk.Events, &Event{Tick: tick, Port: port, Message: message})
 }
 
 func (trk *Track) Save() (err error) {
