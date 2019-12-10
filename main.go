@@ -98,7 +98,7 @@ func main() {
 			}
 			switch msg := m.Message.(type) {
 			case channel.Message:
-				model.Track.Insert(tick, m.Port, msg.Raw())
+				model.Track.Insert(&track.Event{Tick: tick, Port: m.Port, Message: msg.Raw()})
 			}
 		}
 	}
@@ -134,28 +134,22 @@ func routing() (p *OptionPage) {
 	}
 	p = NewOptionPage("MIDI CONFIG")
 	p.Page("MIDI DEVICES", func(p *OptionPage) {
-		p.Page("DIGITAKT", func(p *OptionPage) {
-			p.Picker("INPUT PORT", inputs, -1, func(int) {})
-			p.Picker("OUTPUT PORT", outputs, -1, func(int) {})
-		})
-		p.Page("DIGITONE", func(p *OptionPage) {
-			p.Picker("INPUT PORT", inputs, -1, func(int) {})
-			p.Picker("OUTPUT PORT", outputs, -1, func(int) {})
-		})
+		for _, dev := range model.Track.Devices {
+			p.Page(dev.Name, func(p *OptionPage) {
+				p.Picker("INPUT PORT", inputs, -1, func(int) {})
+				p.Picker("OUTPUT PORT", outputs, -1, func(int) {})
+			})
+		}
 	})
 	p.Page("MIDI ROUTING", func(p *OptionPage) {
-		p.Page("DIGITAKT -> DIGITONE", func(p *OptionPage) {
-			p.Checkbox("CLOCK", false, func(bool) {})
-			p.Checkbox("PROG CH", false, func(bool) {})
-			p.Checkbox("NOTES", false, func(bool) {})
-			p.Checkbox("CC/NRPN", false, func(bool) {})
-		})
-		p.Page("DIGITONE -> DIGITAKT", func(p *OptionPage) {
-			p.Checkbox("CLOCK", false, func(bool) {})
-			p.Checkbox("PROG CH", false, func(bool) {})
-			p.Checkbox("NOTES", false, func(bool) {})
-			p.Checkbox("CC/NRPN", false, func(bool) {})
-		})
+		for _, r := range model.Track.Routes {
+			p.Page(r.String(), func(p *OptionPage) {
+				p.Checkbox("CLOCK", false, func(bool) {})
+				p.Checkbox("PROG CH", false, func(bool) {})
+				p.Checkbox("NOTES", false, func(bool) {})
+				p.Checkbox("CC/NRPN", false, func(bool) {})
+			})
+		}
 	})
 	return
 }
