@@ -103,7 +103,6 @@ func main() {
 				model.Playing = true
 			case realtime.Stop:
 				model.Playing = false
-				must(model.Track.Save())
 			}
 			if model.Recording {
 				port, message := m.Port, m.Message.Raw()

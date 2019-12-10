@@ -8,6 +8,7 @@ IN PROGRESS
 
 BUG
 ===
+- If a port is renamed (MIDI cable reconnected on another slot), the file .trk is not readable anymore (event are referencing a port that does not exist and cannot be changed).
 - New recorded events are not sent to the player state.
     - Step 1 : Record unmute chann 1
     - Step 2 : Record mute chann 1
