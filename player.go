@@ -3,11 +3,9 @@ package main
 import (
 	"bytes"
 	"log"
-	"trk/track"
 
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/mid"
-	"gitlab.com/gomidi/midi/midimessage/channel"
 )
 
 type Player struct {
@@ -20,65 +18,33 @@ func NewPlayer() *Player {
 	return &Player{make(map[string]mid.Out), new(playEventSet), new(playEventSet)}
 }
 
-func (p *Player) Play(trk *track.Track, tick int) {
-	// for _, part := range trk.Parts() {
-	// 	p.writePattern(trk, part, tick)
-	// 	p.writeMute(trk, part, tick)
-	// }
-	// p.flush()
-}
-
-func (p *Player) PlayPattern(trk *track.Track, tick int) {
-	// for _, part := range trk.Parts() {
-	// 	p.writePattern(trk, part, tick)
-	// }
-	// p.flush()
-}
-
-func (p *Player) PlayMute(trk *track.Track, tick int) {
-	// for _, part := range trk.Parts() {
-	// 	p.writeMute(trk, part, tick)
-	// }
-	// p.flush()
-}
-
 func (p *Player) Close() {
 	for name := range p.ports {
 		p.close(name)
 	}
 }
 
-// func (p *Player) writePattern(trk *track.Track, part *track.Part, tick int) {
-// 	pattern := trk.Pattern(part, tick)
-// 	p.write(part.ProgChgPortOut, p.pattern(part, pattern))
-// }
+func (p *Player) Play(ports []string, message midi.Message) error {
+	for _, port := range ports {
+		out, ok := p.ports[port]
+		if !ok {
+			var err error
+			out, err = mid.OpenOut(midiDriver, -1, port)
+			if err != nil {
+				return err
+			}
+			p.ports[port] = out
+		}
+		out.Send(message.Raw())
+	}
+	return nil
+}
 
-// func (p *Player) pattern(part *track.Part, pattern int) midi.Message {
-// 	return channel.Channel(part.ProgChgOutCh).ProgramChange(uint8(pattern))
-// }
-
-// func (p *Player) writeMute(trk *track.Track, part *track.Part, tick int) {
-// 	mute := trk.Mute(part, tick)
-// 	for n, ch := range part.TrackCh {
-// 		if ch == -1 {
-// 			continue
-// 		}
-// 		p.write(part.MutePortOut, p.mute(part, ch, mute[n]))
-// 	}
-// }
-
-// func (p *Player) mute(part *track.Part, ch int, muted bool) midi.Message {
-// 	if muted {
-// 		return channel.Channel(ch).ControlChange(94, 1)
-// 	}
-// 	return channel.Channel(ch).ControlChange(94, 0)
-// }
-
-func (p *Player) write(ports []string, message midi.Message) {
+func (p *Player) Queue(ports []string, message midi.Message) {
 	p.next.Insert(ports, message)
 }
 
-func (p *Player) flush() {
+func (p *Player) Flush() {
 	curr := p.next.Substract(p.last)
 	for _, e := range curr.Events {
 		port, ok := p.ports[e.Port]
@@ -131,24 +97,25 @@ func (e playEvent) Equals(o playEvent) bool {
 }
 
 func (e playEvent) Replace(o playEvent) bool {
-	if e.Port != o.Port {
-		return false
-	}
-	switch e := e.Message.(type) {
-	case channel.ProgramChange:
-		o, ok := o.Message.(channel.ProgramChange)
-		if !ok {
-			return false
-		}
-		return e.Channel() == o.Channel()
-	case channel.ControlChange:
-		o, ok := o.Message.(channel.ControlChange)
-		if !ok {
-			return false
-		}
-		return e.Channel() == o.Channel() && e.Controller() == o.Controller()
-	}
-	return e.Equals(o)
+	return false
+	// if e.Port != o.Port {
+	// 	return false
+	// }
+	// switch e := e.Message.(type) {
+	// case channel.ProgramChange:
+	// 	o, ok := o.Message.(channel.ProgramChange)
+	// 	if !ok {
+	// 		return false
+	// 	}
+	// 	return e.Channel() == o.Channel()
+	// case channel.ControlChange:
+	// 	o, ok := o.Message.(channel.ControlChange)
+	// 	if !ok {
+	// 		return false
+	// 	}
+	// 	return e.Channel() == o.Channel() && e.Controller() == o.Controller()
+	// }
+	// return e.Equals(o)
 }
 
 type playEventSet struct {
@@ -159,7 +126,7 @@ func (s *playEventSet) Insert(ports []string, message midi.Message) {
 	for _, port := range ports {
 		e := playEvent{port, message}
 		if s.contains(e) {
-			return
+			continue
 		}
 		s.Events = append(s.Events, e)
 	}

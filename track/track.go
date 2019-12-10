@@ -137,16 +137,32 @@ func (trk *Track) Save() (err error) {
 	return trk.file.Truncate(int64(len(data)))
 }
 
-func (trk *Track) InputPorts() (ports []string) {
+func (trk *Track) InPorts() (ports []string) {
 	for _, d := range trk.Devices {
 		ports = append(ports, d.Input)
 	}
 	return
 }
 
-func (trk *Track) OutputPorts() (ports []string) {
+func (trk *Track) OutPort(device string) string {
 	for _, d := range trk.Devices {
-		ports = append(ports, d.Output)
+		if d.Name == device {
+			return d.Output
+		}
+	}
+	return ""
+}
+
+func (trk *Track) OutPorts(port string, message []byte) (ports []string) {
+	for _, d := range trk.Devices {
+		if d.Input != port {
+			continue
+		}
+		for _, r := range trk.Routes {
+			if r.Input == d.Name && r.Accept(message) {
+				ports = append(ports, trk.OutPort(r.Output))
+			}
+		}
 	}
 	return
 }

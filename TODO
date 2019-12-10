@@ -18,6 +18,7 @@ BUG
 - Always keep the state of the devices, even when not recording.
     - Change to pattern 2
     - Start recording BUG Sequence is not on pattern 2 and the device won't send pattern 2 because it is already activated.
+- Recorder ports are not closed on exit (or not logged?)
 
 IMPROVEMENTS
 ============

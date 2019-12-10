@@ -8,7 +8,6 @@ import (
 	"trk/rtmididrv"
 	"trk/track"
 
-	"github.com/gomidi/midi/midimessage/channel"
 	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
 )
@@ -66,7 +65,7 @@ func main() {
 	for !done {
 		render()
 
-		recorder.Listen(model.Track.InputPorts())
+		recorder.Listen(model.Track.InPorts())
 
 		select {
 		case e := <-eventC:
@@ -77,8 +76,11 @@ func main() {
 				switch e.Key {
 				case termbox.KeyEsc:
 					done = true
+
 				case termbox.KeyCtrlO:
 					ui.Show(NewDialog(options()))
+				case termbox.KeyCtrlD:
+					console.Enabled = !console.Enabled
 				}
 			}
 
@@ -96,10 +98,12 @@ func main() {
 			case realtime.Stop:
 				model.State = Viewing
 			}
-			switch msg := m.Message.(type) {
-			case channel.Message:
-				model.Track.Insert(&track.Event{Tick: tick, Port: m.Port, Message: msg.Raw()})
-			}
+			player.Play(model.Track.OutPorts(m.Port, m.Message.Raw()), m.Message)
+
+			// switch msg := m.Message.(type) {
+			// case channel.Message:
+			// 	model.Track.Insert(&track.Event{Tick: tick, Port: m.Port, Message: msg.Raw()})
+			// }
 		}
 	}
 
@@ -144,10 +148,6 @@ func options() (p *OptionPage) {
 				r, err := model.Track.CreateRouteIfNotExist(src.Name, dst.Name)
 				must(err)
 				p.Page(r.String(), func(p *OptionPage) {
-					p.Checkbox("CLOCK", r.Clock, func(val bool) {
-						r.Clock = val
-						must(model.Track.Save())
-					})
 					p.Checkbox("PROG CH", r.ProgCh, func(val bool) {
 						r.ProgCh = val
 						must(model.Track.Save())
@@ -234,7 +234,7 @@ func (pl PortList) IndexOf(port string) int {
 // 	defer termbox.Close()
 
 // 	player.Play(model.Track, 0)
-// 	recorder.Listen(model.Track.InputPorts())
+// 	recorder.Listen(model.Track.Inputs())
 
 // 	var (
 // 		eventC = make(chan termbox.Event)
@@ -343,7 +343,7 @@ func (pl PortList) IndexOf(port string) int {
 // 				}
 // 			}
 // 		}
-// 		recorder.Listen(model.Track.InputPorts())
+// 		recorder.Listen(model.Track.Inputs())
 // 		if model.State == Playing {
 // 			switch tick {
 // 			case 12:
