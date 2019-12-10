@@ -120,12 +120,16 @@ func (p *OptionPage) Checkbox(title string, on bool, onchange func(bool)) {
 	p.items = append(p.items, &Checkbox{title, on, onchange})
 }
 
-func (p *OptionPage) AddPicker(label string, values map[int]string, selected int, onchange func(int)) {
+func (p *OptionPage) Picker(label string, values map[int]string, selected int, onchange func(int)) {
 	p.items = append(p.items, &Picker{label, values, selected, onchange})
 }
 
-func (p *OptionPage) AddLabel(label string) {
+func (p *OptionPage) Label(label string) {
 	p.items = append(p.items, &Label{label})
+}
+
+func (p *OptionPage) Button(label string, onpush func()) {
+	p.items = append(p.items, &Button{label, onpush})
 }
 
 func (p *OptionPage) PreferredSize() Size {
@@ -303,6 +307,27 @@ func (l *Label) String(width int) string {
 
 func (l *Label) MinWidth() int {
 	return len(l.text)
+}
+
+type Button struct {
+	label  string
+	onpush func()
+}
+
+func (b *Button) Handle(dialog *Dialog, event termbox.Event) bool {
+	if IsKey(event, termbox.KeyEnter) {
+		b.onpush()
+		return true
+	}
+	return false
+}
+
+func (b *Button) String(width int) string {
+	return b.label
+}
+
+func (b *Button) MinWidth() int {
+	return len(b.label)
 }
 
 func LayoutString(lhs, rhs string, width int) string {

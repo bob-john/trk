@@ -77,8 +77,8 @@ func main() {
 				switch e.Key {
 				case termbox.KeyEsc:
 					done = true
-				case termbox.KeyCtrlO:
-					ui.Show(NewDialog(options()))
+				case termbox.KeyCtrlR:
+					ui.Show(NewDialog(routing()))
 				}
 			}
 
@@ -98,7 +98,7 @@ func main() {
 			}
 			switch msg := m.Message.(type) {
 			case channel.Message:
-				must((&track.Event{"", m.Port, tick, msg.Raw()}).Save(model.Track))
+				model.Track.Insert(tick, m.Port, msg.Raw())
 			}
 		}
 	}
@@ -109,8 +109,8 @@ func main() {
 func render() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	w := tabwriter.NewWriter(&Writer{}, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "#\tTime\tPort\tCh\tType\tSubtype/Note\tValue")
-	for n, e := range model.Track.Events() {
+	fmt.Fprintln(w, "#\tTime\tDevice\tCh\tType\tSubtype/Note\tValue")
+	for n, e := range model.Track.Events {
 		fmt.Fprintf(w, "%o\t%d\t%s\t-\t-\t-\t-\n", 1+n, e.Tick, e.Port)
 	}
 	w.Flush()
@@ -119,26 +119,45 @@ func render() {
 	termbox.Flush()
 }
 
-func options() *OptionPage {
-	var (
-		p         = NewOptionPage("MIDI CONFIG")
-		inputs, _ = midiDriver.Ins()
-		// outputs, _ = midiDriver.Outs()
-	)
-	p.Page("INPUT PORTS", func(p *OptionPage) {
-		for _, port := range inputs {
-			port := port.String()
-			p.Checkbox(port, model.Track.Input(port) != nil, func(val bool) {
-				must(model.Track.SetInput(port, val))
-			})
-		}
+func routing() (p *OptionPage) {
+	ins, err := midiDriver.Ins()
+	must(err)
+	inputs := map[int]string{-1: "OFF"}
+	for n, i := range ins {
+		inputs[n] = i.String()
+	}
+	outs, err := midiDriver.Ins()
+	must(err)
+	outputs := map[int]string{-1: "OFF"}
+	for n, o := range outs {
+		outputs[n] = o.String()
+	}
+	p = NewOptionPage("MIDI CONFIG")
+	p.Page("MIDI DEVICES", func(p *OptionPage) {
+		p.Page("DIGITAKT", func(p *OptionPage) {
+			p.Picker("INPUT PORT", inputs, -1, func(int) {})
+			p.Picker("OUTPUT PORT", outputs, -1, func(int) {})
+		})
+		p.Page("DIGITONE", func(p *OptionPage) {
+			p.Picker("INPUT PORT", inputs, -1, func(int) {})
+			p.Picker("OUTPUT PORT", outputs, -1, func(int) {})
+		})
 	})
-	// p.Page("OUT PORTS", func(p *OptionPage) {
-	// 	for _, port := range outputs {
-	// 		p.Checkbox(port.String(), false, func(val bool) {})
-	// 	}
-	// })
-	return p
+	p.Page("MIDI ROUTING", func(p *OptionPage) {
+		p.Page("DIGITAKT -> DIGITONE", func(p *OptionPage) {
+			p.Checkbox("CLOCK", false, func(bool) {})
+			p.Checkbox("PROG CH", false, func(bool) {})
+			p.Checkbox("NOTES", false, func(bool) {})
+			p.Checkbox("CC/NRPN", false, func(bool) {})
+		})
+		p.Page("DIGITONE -> DIGITAKT", func(p *OptionPage) {
+			p.Checkbox("CLOCK", false, func(bool) {})
+			p.Checkbox("PROG CH", false, func(bool) {})
+			p.Checkbox("NOTES", false, func(bool) {})
+			p.Checkbox("CC/NRPN", false, func(bool) {})
+		})
+	})
+	return
 }
 
 // var (
@@ -389,28 +408,28 @@ func options() *OptionPage {
 // 			channels[ch] = strconv.Itoa(ch + 1)
 // 		}
 // 		page.Page("PORT CONFIG", func(page *OptionPage) {
-// 			page.AddLabel("PROG CHG PORT IN")
+// 			page.Label("PROG CHG PORT IN")
 // 			addInputs(page, &part.ProgChgPortIn)
-// 			page.AddLabel("PROG CHG PORT OUT")
+// 			page.Label("PROG CHG PORT OUT")
 // 			addOutputs(page, &part.ProgChgPortOut)
-// 			page.AddLabel("MUTE PORT IN")
+// 			page.Label("MUTE PORT IN")
 // 			addInputs(page, &part.MutePortIn)
-// 			page.AddLabel("MUTE PORT OUT")
+// 			page.Label("MUTE PORT OUT")
 // 			addOutputs(page, &part.MutePortOut)
 // 		})
 // 		page.Page("CHANNELS", func(page *OptionPage) {
 // 			for n, ch := range part.TrackCh {
 // 				n := n
-// 				page.AddPicker(track.FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
+// 				page.Picker(track.FormatTrackName(part.Name, n)+" CH", channels, ch, func(ch int) {
 // 					part.TrackCh[n] = ch
 // 					must(model.Track.SetPart(part))
 // 				})
 // 			}
-// 			page.AddPicker("PROG CHG IN CH", channels, part.ProgChgInCh, func(selected int) {
+// 			page.Picker("PROG CHG IN CH", channels, part.ProgChgInCh, func(selected int) {
 // 				part.ProgChgInCh = selected
 // 				must(model.Track.SetPart(part))
 // 			})
-// 			page.AddPicker("PROG CHG OUT CH", channels, part.ProgChgOutCh, func(selected int) {
+// 			page.Picker("PROG CHG OUT CH", channels, part.ProgChgOutCh, func(selected int) {
 // 				part.ProgChgOutCh = selected
 // 				must(model.Track.SetPart(part))
 // 			})
