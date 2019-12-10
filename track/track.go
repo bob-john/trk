@@ -34,7 +34,7 @@ func Open(name string) (trk *Track, err error) {
 	trk = &Track{file: f}
 
 	st, err := f.Stat()
-	if err != nil && st.Size() == 0 {
+	if err == nil && st.Size() != 0 {
 		d := json.NewDecoder(f)
 		err = d.Decode(trk)
 		if err != nil {

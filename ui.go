@@ -218,11 +218,11 @@ func (m *Menu) Handle(dialog *Dialog, e termbox.Event) bool {
 }
 
 func (m *Menu) String(width int) string {
-	return LayoutString(m.label, "", width)
+	return LayoutString(m.label, ">", width)
 }
 
 func (m *Menu) MinWidth() int {
-	return len(m.label)
+	return len(m.label) + 2
 }
 
 type Checkbox struct {

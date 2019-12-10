@@ -77,8 +77,8 @@ func main() {
 				switch e.Key {
 				case termbox.KeyEsc:
 					done = true
-				case termbox.KeyCtrlR:
-					ui.Show(NewDialog(routing()))
+				case termbox.KeyCtrlO:
+					ui.Show(NewDialog(options()))
 				}
 			}
 
@@ -119,39 +119,87 @@ func render() {
 	termbox.Flush()
 }
 
-func routing() (p *OptionPage) {
-	ins, err := midiDriver.Ins()
+func options() (p *OptionPage) {
+	inputs, err := NewInputPortList()
 	must(err)
-	inputs := map[int]string{-1: "OFF"}
-	for n, i := range ins {
-		inputs[n] = i.String()
-	}
-	outs, err := midiDriver.Ins()
+	outputs, err := NewOutputPortList()
 	must(err)
-	outputs := map[int]string{-1: "OFF"}
-	for n, o := range outs {
-		outputs[n] = o.String()
+
+	p = NewOptionPage("DEVICES CONFIG")
+	for _, src := range model.Track.Devices {
+		src := src
+		p.Page(src.Name, func(p *OptionPage) {
+			p.Picker("INPUT PORT", inputs, inputs.IndexOf(src.Input), func(val int) {
+				src.Input = inputs[val]
+				must(model.Track.Save())
+			})
+			p.Picker("OUTPUT PORT", outputs, outputs.IndexOf(src.Output), func(val int) {
+				src.Output = outputs[val]
+				must(model.Track.Save())
+			})
+			for _, dst := range model.Track.Devices {
+				if dst.Name == src.Name {
+					continue
+				}
+				r, err := model.Track.CreateRouteIfNotExist(src.Name, dst.Name)
+				must(err)
+				p.Page(r.String(), func(p *OptionPage) {
+					p.Checkbox("CLOCK", r.Clock, func(val bool) {
+						r.Clock = val
+						must(model.Track.Save())
+					})
+					p.Checkbox("PROG CH", r.ProgCh, func(val bool) {
+						r.ProgCh = val
+						must(model.Track.Save())
+					})
+					p.Checkbox("NOTES", r.Notes, func(val bool) {
+						r.Notes = val
+						must(model.Track.Save())
+					})
+					p.Checkbox("CC/NRPN", r.CC, func(val bool) {
+						r.CC = val
+						must(model.Track.Save())
+					})
+				})
+			}
+		})
 	}
-	p = NewOptionPage("MIDI CONFIG")
-	p.Page("MIDI DEVICES", func(p *OptionPage) {
-		for _, dev := range model.Track.Devices {
-			p.Page(dev.Name, func(p *OptionPage) {
-				p.Picker("INPUT PORT", inputs, -1, func(int) {})
-				p.Picker("OUTPUT PORT", outputs, -1, func(int) {})
-			})
-		}
-	})
-	p.Page("MIDI ROUTING", func(p *OptionPage) {
-		for _, r := range model.Track.Routes {
-			p.Page(r.String(), func(p *OptionPage) {
-				p.Checkbox("CLOCK", false, func(bool) {})
-				p.Checkbox("PROG CH", false, func(bool) {})
-				p.Checkbox("NOTES", false, func(bool) {})
-				p.Checkbox("CC/NRPN", false, func(bool) {})
-			})
-		}
-	})
 	return
+}
+
+type PortList map[int]string
+
+func NewInputPortList() (PortList, error) {
+	ports, err := midiDriver.Ins()
+	if err != nil {
+		return nil, err
+	}
+	values := map[int]string{-1: "OFF"}
+	for i, port := range ports {
+		values[i] = port.String()
+	}
+	return PortList(values), nil
+}
+
+func NewOutputPortList() (PortList, error) {
+	ports, err := midiDriver.Outs()
+	if err != nil {
+		return nil, err
+	}
+	values := map[int]string{-1: "OFF"}
+	for i, port := range ports {
+		values[i] = port.String()
+	}
+	return PortList(values), nil
+}
+
+func (pl PortList) IndexOf(port string) int {
+	for i, name := range pl {
+		if i != -1 && name == port {
+			return i
+		}
+	}
+	return -1
 }
 
 // var (
