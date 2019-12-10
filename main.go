@@ -3,13 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"reflect"
 	"text/tabwriter"
 	"trk/rtmididrv"
 	"trk/track"
 
-	"github.com/gomidi/midi/midimessage/realtime"
 	"github.com/nsf/termbox-go"
+	"gitlab.com/gomidi/midi/midimessage/realtime"
 )
 
 var (
@@ -58,11 +60,7 @@ func main() {
 		}
 	}()
 
-	var (
-		done bool
-		tick int
-	)
-	for !done {
+	for !model.Done {
 		render()
 
 		recorder.Listen(model.Track.InPorts())
@@ -75,7 +73,7 @@ func main() {
 			if e.Type == termbox.EventKey {
 				switch e.Key {
 				case termbox.KeyEsc:
-					done = true
+					model.Done = true
 
 				case termbox.KeyCtrlO:
 					ui.Show(NewDialog(options()))
@@ -83,35 +81,34 @@ func main() {
 					console.Enabled = !console.Enabled
 
 				case termbox.KeyEnter, termbox.KeySpace:
-					if model.State == Recording {
+					if model.Recording {
 						must(model.Track.Save())
 					}
-					model.ToggleRecording()
+					model.Recording = !model.Recording
 				}
 			}
 
 		case m := <-midiC:
+			log.Print(reflect.TypeOf(m.Message), m.Message == realtime.TimingClock)
 			switch m.Message {
 			case realtime.TimingClock:
-				if model.State == Playing {
-					tick++
+				if model.Playing {
+					model.Tick++
 					// player.Play(model.Track.OutPorts(m.Port, m.Message.Raw()), m.Message)
 				}
 			case realtime.Start:
-				model.State = Playing
-				tick = 0
+				model.Playing = true
+				model.Tick = 0
 			case realtime.Continue:
-				model.State = Playing
+				model.Playing = true
 			case realtime.Stop:
-				model.State = Viewing
+				model.Playing = false
 				must(model.Track.Save())
-
-			default:
-				if model.State == Recording {
-					port, message := m.Port, m.Message.Raw()
-					if len(message) > 0 && message[0] >= 0x80 && message[0] <= 0xf0 {
-						model.Track.Insert(tick, port, message)
-					}
+			}
+			if model.Recording {
+				port, message := m.Port, m.Message.Raw()
+				if len(message) > 0 && message[0] >= 0x80 && message[0] <= 0xf0 {
+					model.Track.Insert(model.Tick, port, message)
 				}
 			}
 		}
