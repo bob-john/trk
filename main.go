@@ -123,13 +123,13 @@ func render() {
 	pageSize -= 2
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	w := tabwriter.NewWriter(&Writer{}, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "#\tTime\tPort\tCh\tType\tSubtype/Note\tValue")
+	fmt.Fprintln(w, "#\tBar.16th\tPort\tCh\tType\tSubtype/Note\tValue")
 	events, base := model.Track.Events, 1
 	if len(events) > pageSize {
 		events, base = events[len(events)-pageSize:], len(events)-pageSize
 	}
 	for i, e := range events {
-		fmt.Fprintf(w, "%o\t%d\t%s\t%d\t%s\t-\t-\n", base+i, e.Tick, e.Port, e.Channel(), e.Type())
+		fmt.Fprintf(w, "%o\t%s\t%s\t%d\t%s\t%s\t%d\n", base+i, e.Beat(), e.Port, e.Channel(), e.Type(), e.Subtype(), e.Value())
 	}
 	w.Flush()
 	console.Render()

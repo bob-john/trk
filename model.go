@@ -8,6 +8,7 @@ type Model struct {
 	Playing   bool
 	Recording bool
 	Tick      int
+	Cursor    int
 }
 
 func NewModel() *Model {
