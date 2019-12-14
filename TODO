@@ -4,9 +4,8 @@ IN PROGRESS
 
 NEXT
 ====
+- Add tracker.Begin()/End() to batch events.
+- Add Schedule(tick, func()) where func is batched (to allow device to play note).
 - Save selected port to configuration file (associate to device name). Do not prompt again if the port is available.
-- Do not require caller to handle errors. Panic.
 - Encapsulate *UI into *Tracker.
-- Do not require tracker.New(). Use package method.
-- Do not require ui.Close()? Close termbox after each UI interaction?
 - Send pattern change/mute to another device. By eg. mute from Digitone to Digitakt. Copy? Shadow?

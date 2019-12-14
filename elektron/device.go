@@ -12,10 +12,11 @@ type Device struct {
 	channels     map[int]int
 	progChgOutCh int
 	trackCount   int
+	muteInit     bool
 }
 
 func NewDevice(port string, trackCount int) *Device {
-	return &Device{port, make(map[int]int), 10, trackCount}
+	return &Device{port, make(map[int]int), 10, trackCount, true}
 }
 
 func (d *Device) SetChannel(track, channel int) {
@@ -26,16 +27,38 @@ func (d *Device) SetProgChgOutCh(channel int) {
 	d.progChgOutCh = channel
 }
 
-func (d *Device) Pattern(ptn Pattern) tracker.Event {
-	return progChg{d.port, d.progChgOutCh, ptn.Program()}
+func (d *Device) SetPattern(ptn Pattern) {
+	tracker.Play(progChg{d.port, d.progChgOutCh, ptn.Program()})
 }
 
-func (d *Device) Mute(track int) tracker.Event {
-	return mute{d.port, d.channel(track)}
+func (d *Device) Mute(tracks ...int) {
+	if d.muteInit {
+		d.muteInit = false
+		d.Unmute()
+	}
+	if len(tracks) == 0 {
+		for i := 1; i <= d.trackCount; i++ {
+			tracks = append(tracks, i)
+		}
+	}
+	for _, track := range tracks {
+		tracker.Play(mute{d.port, d.channel(track)})
+	}
 }
 
-func (d *Device) Unmute(track int) tracker.Event {
-	return unmute{d.port, d.channel(track)}
+func (d *Device) Unmute(tracks ...int) {
+	if d.muteInit {
+		d.muteInit = false
+		d.Mute()
+	}
+	if len(tracks) == 0 {
+		for i := 1; i <= d.trackCount; i++ {
+			tracks = append(tracks, i)
+		}
+	}
+	for _, track := range tracks {
+		tracker.Play(unmute{d.port, d.channel(track)})
+	}
 }
 
 func (d *Device) channel(track int) int {
