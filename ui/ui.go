@@ -4,34 +4,23 @@ import (
 	"errors"
 	"strings"
 	"trk/rtmididrv"
-	"trk/tracker"
 
 	"github.com/nsf/termbox-go"
 )
 
 var ErrCanceled = errors.New("ui: canceled")
 
-type UI struct{}
-
-func New() (*UI, error) {
-	err := termbox.Init()
-	if err != nil {
-		return nil, err
-	}
-	return &UI{}, nil
+func init() {
+	must(termbox.Init())
 }
 
-// Output queries the user to pick an output port for the named device.
-func (ui *UI) Out(tracker *tracker.Tracker, name string) (out *tracker.Out, err error) {
-	ui.Clear()
+// Out queries the user to pick an output port for the named device.
+func Out(name string) (port string) {
+	Clear()
 	drv, err := rtmididrv.New()
-	if err != nil {
-		return
-	}
+	must(err)
 	outs, err := drv.Outs()
-	if err != nil {
-		return
-	}
+	must(err)
 	p := NewOptionPage(name + " Output")
 	for i, port := range outs {
 		if strings.Contains(port.String(), name) {
@@ -48,18 +37,18 @@ func (ui *UI) Out(tracker *tracker.Tracker, name string) (out *tracker.Out, err 
 		e := termbox.PollEvent()
 		switch e.Type {
 		case termbox.EventInterrupt:
-			return nil, ErrCanceled
+			panic(ErrCanceled)
 
 		case termbox.EventKey:
 			switch e.Key {
 			case termbox.KeyArrowUp, termbox.KeyArrowDown:
-				d.Handle(ui, e)
+				d.Handle(e)
 
 			case termbox.KeyEnter:
-				return tracker.Out(d.Page().Item().Value()), nil
+				return d.Page().Item().Value()
 
 			case termbox.KeyEsc:
-				return nil, ErrCanceled
+				panic(ErrCanceled)
 			}
 		}
 		d.Render()
@@ -67,12 +56,18 @@ func (ui *UI) Out(tracker *tracker.Tracker, name string) (out *tracker.Out, err 
 	}
 }
 
-func (ui *UI) Clear() {
+func Clear() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 }
 
-func (ui *UI) Close() {
-	ui.Clear()
+func Close() {
+	Clear()
 	// termbox.Interrupt()
 	termbox.Close()
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

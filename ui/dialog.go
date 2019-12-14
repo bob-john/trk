@@ -30,7 +30,7 @@ func (d *Dialog) Back() {
 	}
 }
 
-func (d *Dialog) Handle(ui *UI, e termbox.Event) (handled bool) {
+func (d *Dialog) Handle(e termbox.Event) (handled bool) {
 	if e.Type != termbox.EventKey {
 		return
 	}

@@ -25,19 +25,17 @@ func (p *Player) Close() {
 	}
 }
 
-func (p *Player) Play(ports []string, message midi.Message) error {
-	for _, port := range ports {
-		out, ok := p.ports[port]
-		if !ok {
-			var err error
-			out, err = mid.OpenOut(p.driver, -1, port)
-			if err != nil {
-				return err
-			}
-			p.ports[port] = out
+func (p *Player) Play(port string, message midi.Message) error {
+	out, ok := p.ports[port]
+	if !ok {
+		var err error
+		out, err = mid.OpenOut(p.driver, -1, port)
+		if err != nil {
+			return err
 		}
-		out.Send(message.Raw())
+		p.ports[port] = out
 	}
+	out.Send(message.Raw())
 	return nil
 }
 
