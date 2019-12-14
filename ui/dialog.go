@@ -1,44 +1,11 @@
-package main
+package ui
 
 import (
 	"strings"
+	"trk/util/ints"
 
 	"github.com/nsf/termbox-go"
 )
-
-type UI struct {
-	dialog *Dialog
-}
-
-func NewUI() *UI {
-	return new(UI)
-}
-
-func (ui *UI) Show(dialog *Dialog) {
-	ui.dialog = dialog
-}
-
-func (ui *UI) Dismiss() {
-	ui.dialog = nil
-}
-
-func (ui *UI) Handle(e termbox.Event) bool {
-	if ui.dialog == nil {
-		return false
-	}
-	if IsKey(e, termbox.KeyEsc, termbox.KeyCtrlO) {
-		ui.Dismiss()
-	} else if ui.dialog != nil {
-		ui.dialog.Handle(ui, e)
-	}
-	return true
-}
-
-func (ui *UI) Render() {
-	if ui.dialog != nil {
-		ui.dialog.Render()
-	}
-}
 
 type Dialog struct {
 	stack []*OptionPage
@@ -72,14 +39,14 @@ func (d *Dialog) Handle(ui *UI, e termbox.Event) (handled bool) {
 		return
 	}
 	switch e.Key {
-	case termbox.KeyEsc:
-		ui.Dismiss()
-		handled = true
+	// case termbox.KeyEsc:
+	// 	ui.Dismiss()
+	// 	handled = true
 	case termbox.KeyBackspace, termbox.KeyBackspace2, termbox.KeyArrowLeft:
 		if len(d.stack) > 1 {
 			d.Back()
 		} else {
-			ui.Dismiss()
+			// ui.Dismiss()
 		}
 		handled = true
 	}
@@ -108,6 +75,10 @@ type OptionPage struct {
 
 func NewOptionPage(title string) *OptionPage {
 	return &OptionPage{title, nil, 0, 0}
+}
+
+func (p *OptionPage) Item() OptionItem {
+	return p.items[p.selected]
 }
 
 func (p *OptionPage) Page(title string, build func(page *OptionPage)) {
@@ -172,9 +143,9 @@ func (p *OptionPage) Handle(d *Dialog, e termbox.Event) (handled bool) {
 	default:
 		handled = p.items[p.selected].Handle(d, e)
 	}
-	p.selected = Clamp(p.selected, 0, len(p.items)-1)
+	p.selected = ints.Clamp(p.selected, 0, len(p.items)-1)
 	if len(p.items) > 5 {
-		p.offset = Clamp(p.offset, 0, len(p.items)-5)
+		p.offset = ints.Clamp(p.offset, 0, len(p.items)-5)
 	} else {
 		p.offset = 0
 	}
@@ -191,7 +162,7 @@ func (p *OptionPage) Render(x, y, width, height int) {
 		if p.offset+n == p.selected {
 			fg = fg | termbox.AttrReverse
 		}
-		DrawString(x, y+n, item.String(width), fg, bg)
+		DrawString(x, y+n, item.Text(width), fg, bg)
 	}
 	if len(p.items) > height {
 		DrawString(x+width-1, y+height*p.selected/len(p.items), "\u2590", termbox.ColorDefault, termbox.ColorDefault)
@@ -200,8 +171,9 @@ func (p *OptionPage) Render(x, y, width, height int) {
 
 type OptionItem interface {
 	Handle(*Dialog, termbox.Event) bool
-	String(int) string
+	Text(int) string
 	MinWidth() int
+	Value() string
 }
 
 type Menu struct {
@@ -217,12 +189,16 @@ func (m *Menu) Handle(dialog *Dialog, e termbox.Event) bool {
 	return false
 }
 
-func (m *Menu) String(width int) string {
+func (m *Menu) Text(width int) string {
 	return LayoutString(m.label, ">", width)
 }
 
 func (m *Menu) MinWidth() int {
 	return len(m.label) + 2
+}
+
+func (m *Menu) Value() string {
+	return m.label //HACK
 }
 
 type Checkbox struct {
@@ -240,7 +216,7 @@ func (c *Checkbox) Handle(dialog *Dialog, e termbox.Event) bool {
 	return false
 }
 
-func (c *Checkbox) String(width int) string {
+func (c *Checkbox) Text(width int) string {
 	box := "[ ]"
 	if c.on {
 		box = "[x]"
@@ -250,6 +226,13 @@ func (c *Checkbox) String(width int) string {
 
 func (c *Checkbox) MinWidth() int {
 	return len(c.label) + 4
+}
+
+func (c *Checkbox) Value() string {
+	if c.on {
+		return "true"
+	}
+	return "false"
 }
 
 type Picker struct {
@@ -279,7 +262,7 @@ func (p *Picker) Handle(dialog *Dialog, e termbox.Event) (handled bool) {
 	return
 }
 
-func (p *Picker) String(width int) string {
+func (p *Picker) Text(width int) string {
 	return LayoutString(p.label, p.values[p.selected], width)
 }
 
@@ -293,6 +276,10 @@ func (p *Picker) MinWidth() int {
 	return len(p.label) + 1 + w
 }
 
+func (p *Picker) Value() string {
+	return p.values[p.selected]
+}
+
 type Label struct {
 	text string
 }
@@ -301,12 +288,16 @@ func (*Label) Handle(dialog *Dialog, e termbox.Event) bool {
 	return false
 }
 
-func (l *Label) String(width int) string {
+func (l *Label) Text(width int) string {
 	return LayoutString(l.text, "", width)
 }
 
 func (l *Label) MinWidth() int {
 	return len(l.text)
+}
+
+func (l *Label) Value() string {
+	return l.text
 }
 
 type Button struct {
@@ -322,7 +313,7 @@ func (b *Button) Handle(dialog *Dialog, event termbox.Event) bool {
 	return false
 }
 
-func (b *Button) String(width int) string {
+func (b *Button) Text(width int) string {
 	return b.label
 }
 
@@ -335,6 +326,10 @@ func LayoutString(lhs, rhs string, width int) string {
 		lhs = strings.TrimSpace(lhs[:width-len(rhs)-5]) + "..."
 	}
 	return lhs + strings.Repeat(" ", width-len(rhs)-1-len(lhs)) + rhs
+}
+
+func (b *Button) Value() string {
+	return ""
 }
 
 type Size struct {

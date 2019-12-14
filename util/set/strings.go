@@ -1,14 +1,4 @@
-package main
-
-func Clamp(val, min, max int) int {
-	if val < min {
-		return min
-	}
-	if val > max {
-		return max
-	}
-	return val
-}
+package set
 
 func Contains(a []string, x string) bool {
 	for _, n := range a {

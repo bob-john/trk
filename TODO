@@ -1,46 +1,9 @@
 IN PROGRESS
 ===========
-- Could trk be a MIDI recorder/player? Would require: 
-    - Display CC/PC "properly" (maybe on the right side instead of top)
-    - Add filter for input and output (maybe as a proxy config: allow, deny, allow all, deny all, etc.)
-    - Add redirect with filter (DT->DN, real time+mute only by eg.)
--> See http://www.midish.org/
+- Music API. See http://sonic-pi.net/.
 
-BUG
-===
-- If a port is renamed (MIDI cable reconnected on another slot), the file .trk is not readable anymore (event are referencing a port that does not exist and cannot be changed).
-- New recorded events are not sent to the player state.
-    - Step 1 : Record unmute chann 1
-    - Step 2 : Record mute chann 1
-    - Move back to step 1 BUG chann 1 is still muted
-- Erase does not send events.
-    - Step 1 : Record mute chann 1
-    - Erase step 1 BUG chann 1 is still muted
-- Always keep the state of the devices, even when not recording.
-    - Change to pattern 2
-    - Start recording BUG Sequence is not on pattern 2 and the device won't send pattern 2 because it is already activated.
-- Recorder ports are not closed on exit (or not logged?)
-
-IMPROVEMENTS
-============
-- Continous recording. Having to restart recording after each move is tiresome. Pause recording while playing is safe (but keep the recording state?).
-- Use all of the screen for the UI. Option window could be on the right with full height (would ease browsing MIDI ports).
-- Record while playing.
-
-UNSORTED
-========
-- Page with different length (each page would be a part) and step per bar (1 to 16).
-- Fade out FX
-- Play all events when start recording (because we may have forgotten to record before changing the machine state)
-    -> Would be better to keep recording.
-- Stop stops the recording. Why?
-- Send stop to all when moving around? Otherwise, a paused digitone would delay chaning pattern and mute.
-- Full screen UI
-- [Refactoring] Row -> Step // no more row but tick and step would be cool
-- [Refactoring] Device model or template (ie. DT vs DN to format display and configure).
-- Temp file saved and restored automatically. Ctrl+S to save explicitely. Ctrl+L or R to reload from disk (with confirmation).
-- Add pattern length + global scale + bank scale + pattern scale.
-- Song part? Could be bank + 16 patterns with bank length. Ctrl+PgUp/PgDn to change bank. Have an "original" mode with 8 banks of 16 patterns and an extended mode of 25 banks of 99 patterns.
-- Ctrl+Z
-- Display help
-- Allow bigger/smaller page (even 12 or 20 by eg. - between 1 and 64 steps by eg.), group by 16 anyway.
+NEXT
+====
+- Save selected port to configuration file (associate to device name). Do not prompt again if the port is available.
+- Do not require caller to handle errors. Panic.
+- Encapsulate *UI into *Tracker.

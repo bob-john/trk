@@ -1,4 +1,4 @@
-package main
+package tracker
 
 import (
 	"io"
@@ -15,7 +15,7 @@ type Recorder struct {
 	c     <-chan Message
 }
 
-func NewRecorder() *Recorder {
+func NewRecorder(driver mid.Driver) *Recorder {
 	var (
 		ports = make(chan listenCmd)
 		c     = make(chan Message)
@@ -26,7 +26,7 @@ func NewRecorder() *Recorder {
 			required := make(map[string]bool)
 			for _, name := range cmd.names {
 				if _, ok := opened[name]; !ok {
-					port, err := mid.OpenIn(midiDriver, -1, name)
+					port, err := mid.OpenIn(driver, -1, name)
 					log.Printf("recorder: open %s: %v", port, err)
 					if err != nil {
 						continue

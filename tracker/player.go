@@ -1,4 +1,4 @@
-package main
+package tracker
 
 import (
 	"bytes"
@@ -9,13 +9,14 @@ import (
 )
 
 type Player struct {
-	ports map[string]mid.Out
-	last  *playEventSet
-	next  *playEventSet
+	driver mid.Driver
+	ports  map[string]mid.Out
+	last   *playEventSet
+	next   *playEventSet
 }
 
-func NewPlayer() *Player {
-	return &Player{make(map[string]mid.Out), new(playEventSet), new(playEventSet)}
+func NewPlayer(driver mid.Driver) *Player {
+	return &Player{driver, make(map[string]mid.Out), new(playEventSet), new(playEventSet)}
 }
 
 func (p *Player) Close() {
@@ -29,7 +30,7 @@ func (p *Player) Play(ports []string, message midi.Message) error {
 		out, ok := p.ports[port]
 		if !ok {
 			var err error
-			out, err = mid.OpenOut(midiDriver, -1, port)
+			out, err = mid.OpenOut(p.driver, -1, port)
 			if err != nil {
 				return err
 			}
@@ -50,7 +51,7 @@ func (p *Player) Flush() {
 		port, ok := p.ports[e.Port]
 		if !ok {
 			var err error
-			port, err = mid.OpenOut(midiDriver, -1, e.Port)
+			port, err = mid.OpenOut(p.driver, -1, e.Port)
 			log.Printf("player: open %s: %v", port, err)
 			if err != nil {
 				continue
