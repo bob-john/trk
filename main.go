@@ -19,6 +19,12 @@ var (
 )
 
 func main() {
+	defer ui.Close()
+
+	//
+	// SETUP
+	//
+
 	DT.SetProgChgOutCh(16)
 
 	DN.SetChannel(1, 9)
@@ -27,11 +33,20 @@ func main() {
 	DN.SetChannel(4, 12)
 	DN.SetProgChgOutCh(16)
 
-	ui.Close()
+	//
+	// PLAY
+	//
 
-	DT.SetPattern(C01)
-	DT.Unmute(4, 5)
+	// DT.Schedule("C01", "---45---")
+	// DN.Schedule("C01", "1---")
 
-	DN.SetPattern(C01)
-	DN.Unmute(1)
+	// DT.Schedule("C01", "-2345---")
+	// DN.Schedule("C02", "12--")
+
+	// DT.Schedule("C01", "-2345---")
+	// DN.Schedule("C01", "12--")
+
+	// DT.Schedule("C01", "-2345---")
+	// DN.Schedule("C02", "12--")
+
 }
