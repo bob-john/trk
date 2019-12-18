@@ -5,9 +5,9 @@ import (
 )
 
 func Digitakt() *Device {
-	return NewDevice(ui.Out("Digitakt"), 8)
+	return NewDevice(ui.Output("Digitakt"), 8)
 }
 
 func Digitone() *Device {
-	return NewDevice(ui.Out("Digitone"), 4)
+	return NewDevice(ui.Output("Digitone"), 4)
 }

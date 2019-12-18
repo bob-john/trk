@@ -1,8 +1,6 @@
 package elektron
 
 import (
-	"trk/tracker"
-
 	"github.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi"
 )
@@ -27,39 +25,39 @@ func (d *Device) SetProgChgOutCh(channel int) {
 	d.progChgOutCh = channel
 }
 
-func (d *Device) SetPattern(ptn Pattern) {
-	tracker.Play(progChg{d.port, d.progChgOutCh, ptn.Program()})
-}
+// func (d *Device) SetPattern(ptn Pattern) {
+// 	tracker.Play(progChg{d.port, d.progChgOutCh, ptn.Program()})
+// }
 
-func (d *Device) Mute(tracks ...int) {
-	if d.muteInit {
-		d.muteInit = false
-		d.Unmute()
-	}
-	if len(tracks) == 0 {
-		for i := 1; i <= d.trackCount; i++ {
-			tracks = append(tracks, i)
-		}
-	}
-	for _, track := range tracks {
-		tracker.Play(mute{d.port, d.channel(track)})
-	}
-}
+// func (d *Device) Mute(tracks ...int) {
+// 	if d.muteInit {
+// 		d.muteInit = false
+// 		d.Unmute()
+// 	}
+// 	if len(tracks) == 0 {
+// 		for i := 1; i <= d.trackCount; i++ {
+// 			tracks = append(tracks, i)
+// 		}
+// 	}
+// 	for _, track := range tracks {
+// 		tracker.Play(mute{d.port, d.channel(track)})
+// 	}
+// }
 
-func (d *Device) Unmute(tracks ...int) {
-	if d.muteInit {
-		d.muteInit = false
-		d.Mute()
-	}
-	if len(tracks) == 0 {
-		for i := 1; i <= d.trackCount; i++ {
-			tracks = append(tracks, i)
-		}
-	}
-	for _, track := range tracks {
-		tracker.Play(unmute{d.port, d.channel(track)})
-	}
-}
+// func (d *Device) Unmute(tracks ...int) {
+// 	if d.muteInit {
+// 		d.muteInit = false
+// 		d.Mute()
+// 	}
+// 	if len(tracks) == 0 {
+// 		for i := 1; i <= d.trackCount; i++ {
+// 			tracks = append(tracks, i)
+// 		}
+// 	}
+// 	for _, track := range tracks {
+// 		tracker.Play(unmute{d.port, d.channel(track)})
+// 	}
+// }
 
 func (d *Device) channel(track int) int {
 	ch, ok := d.channels[track]

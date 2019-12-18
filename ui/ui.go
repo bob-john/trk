@@ -4,29 +4,51 @@ import (
 	"errors"
 	"strings"
 	"trk/rtmididrv"
+	"trk/tracker"
 
 	"github.com/nsf/termbox-go"
+	"gitlab.com/gomidi/midi/mid"
 )
 
 var ErrCanceled = errors.New("ui: canceled")
+var midiDriver mid.Driver
 
 func init() {
+	var err error
+	midiDriver, err = rtmididrv.New()
+	must(err)
 	must(termbox.Init())
 }
 
-// Out queries the user to pick an output port for the named device.
-func Out(name string) (port string) {
+func Input(name string) *tracker.In {
+	ins, err := midiDriver.Ins()
+	must(err)
+	var ports []string
+	for _, port := range ins {
+		ports = append(ports, port.String())
+	}
+	port := Port(name, "Input", ports)
+	return tracker.OpenIn(port)
+}
+
+func Output(name string) (port string) {
+	outs, err := midiDriver.Outs()
+	must(err)
+	var ports []string
+	for _, port := range outs {
+		ports = append(ports, port.String())
+	}
+	return Port(name, "Output", ports)
+}
+
+func Port(name, suffix string, ports []string) (port string) {
 	Clear()
-	drv, err := rtmididrv.New()
-	must(err)
-	outs, err := drv.Outs()
-	must(err)
-	p := NewOptionPage(name + " Output")
-	for i, port := range outs {
-		if strings.Contains(port.String(), name) {
+	p := NewOptionPage(name + " " + suffix)
+	for i, port := range ports {
+		if strings.Contains(port, name) {
 			p.selected = i
 		}
-		p.Label(port.String())
+		p.Label(port)
 	}
 	d := NewDialog(p)
 

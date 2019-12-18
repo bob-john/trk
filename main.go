@@ -1,13 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"trk/elektron"
 	"trk/ui"
+
+	"gitlab.com/gomidi/midi"
+	"gitlab.com/gomidi/midi/midimessage/channel"
 )
 
 var (
 	DT = elektron.Digitakt()
 	DN = elektron.Digitone()
+	LP = ui.Input("LPMiniMK3")
 
 	C01 = elektron.C01
 	C02 = elektron.C02
@@ -37,6 +42,16 @@ func main() {
 	// PLAY
 	//
 
+	LP.Listen(func(m midi.Message) bool {
+		fmt.Println(m)
+		switch m := m.(type) {
+		case channel.ControlChange:
+			return m.Controller() != 19
+		default:
+			return true
+		}
+	})
+
 	// DT.Schedule("C01", "---45---")
 	// DN.Schedule("C01", "1---")
 
@@ -48,5 +63,4 @@ func main() {
 
 	// DT.Schedule("C01", "-2345---")
 	// DN.Schedule("C02", "12--")
-
 }
